@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
-    "dev": "nest start --watch",
+    "dev": "dotenv -e ../../.env -- nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "dotenv -e ../../.env -- prisma migrate dev"
   },
   "dependencies": {
     "@mikki-shop/shared-types": "workspace:*",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.5",
     "@types/node": "^20.16.11",
+    "dotenv-cli": "^11.0.0",
     "prisma": "^5.20.0",
     "typescript": "^5.6.3"
   }

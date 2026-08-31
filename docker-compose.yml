@@ -9,7 +9,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # Host 5433, not 5432 — this machine already runs a native postgres
+      # service on 5432 unrelated to this project.
+      - "5433:5432"
 
   redis:
     image: redis:7-alpine
@@ -23,11 +25,19 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file: .env
+    environment:
+      # .env is tuned for local `pnpm dev` against the dockerized db/ports
+      # (127.0.0.1, PORT=3001 to dodge a conflicting local service) —
+      # inside this network the container needs the service hostnames and
+      # its own internal port instead.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
     depends_on:
       - postgres
       - redis
     ports:
-      - "3000:3000"
+      - "3001:3000"
 
   telegram-app:
     build:
