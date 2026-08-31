@@ -1,0 +1,20 @@
+<!-- @dsCard group="Type" viewport="700x230" name="Wordmark — Bubblez Graffiti" subtitle="Контурный шрифт: внутренности берут фон. Только «Микки Шоп», только ≥20px, только на плоском." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Wordmark type</title><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:230px;box-sizing:border-box;overflow:hidden}
+.wm{font-family:var(--font-wordmark);font-weight:400;letter-spacing:.01em;white-space:nowrap;color:var(--text-heading)}
+.tk{font:400 10px/1.4 var(--font-mono);color:var(--ink-300)}
+.no{color:var(--danger-500)}
+.row{display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}</style></head><body>
+<div class="row">
+<div><div class="wm" style="font-size:44px">Микки Шоп</div><div class="tk">44px — вывеска, онбординг</div></div>
+<div><div class="wm" style="font-size:26px">Микки Шоп</div><div class="tk">26px — шапка</div></div>
+<div><div class="wm" style="font-size:20px">Микки Шоп</div><div class="tk">20px — минимум</div></div>
+<div><div class="wm" style="font-size:14px">Микки Шоп</div><div class="tk no">14px — контуры сливаются, нельзя</div></div>
+</div>
+<div class="row" style="margin-top:18px">
+<div><div class="wm" style="font-size:26px;font-style:italic">Микки Шоп</div><div class="tk">italic</div></div>
+<div style="background:var(--surface-inverse);padding:10px 16px;border-radius:var(--r-md)"><div class="wm" style="font-size:26px;color:var(--text-inverse)">Mickey Shop</div></div>
+<div style="background:linear-gradient(120deg,var(--butter-300),var(--butter-600));padding:10px 16px;border-radius:var(--r-md)"><div class="wm" style="font-size:26px;color:var(--olive-900)">Микки Шоп</div><div class="tk" style="color:var(--olive-900);font-weight:600">не на пёстром: внутренности заполняются фоном</div></div>
+</div>
+<div class="tk" style="margin-top:16px">Кириллица полная, включая ёЁ. Никогда для заголовков, кнопок и UI — там Baloo 2.</div>
+</body></html>

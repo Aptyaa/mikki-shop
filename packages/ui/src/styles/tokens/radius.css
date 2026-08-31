@@ -1,0 +1,16 @@
+:root{
+  /* ── Paper, not plastic ──
+     The direction is «бумага и чернила»: printed matter, not an app template.
+     Radii are near-square — photographs sit like pasted prints, rules are hairlines,
+     bands are cut edge to edge. The only round things left are the ones that must be
+     round: count bubbles, the mascot's disc, and swatch dots. */
+  --r-xs:2px;--r-sm:3px;--r-md:4px;--r-lg:6px;--r-xl:8px;--r-2xl:12px;--r-pill:999px;
+
+  --r-card:4px;       /* content surfaces */
+  --r-image:2px;      /* photographs — a printed edge, not a rounded tile */
+  --r-button:6px;
+  --r-field:4px;
+  --r-tag:0; /* @kind radius */          /* labels are cut square, like a stamped price ticket */
+  --r-sheet:8px 8px 0 0; /* @kind radius */
+  --r-disc:999px;     /* mascot discs and count bubbles only */
+}

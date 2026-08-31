@@ -1,0 +1,22 @@
+:root{
+  /* ── Shadows mean "floating", not "this is a card" ──
+     The first build put --sh-2 on every card. Read back, that is the single thing
+     that made the UI look like a template: eight soft rectangles per screen, all
+     hovering slightly, none of them actually above anything.
+
+     Now: a shadow appears only when an element genuinely sits over other content —
+     sheets, popovers, a button floating on a photo, the phone frame in a mockup.
+     Flat surfaces separate by background and hairline instead. */
+  --sh-none:none; /* @kind shadow */
+  --sh-1:0 1px 2px rgba(40,32,20,.05);
+  --sh-2:0 2px 8px rgba(40,32,20,.07);
+  --sh-3:0 6px 18px rgba(40,32,20,.10);
+  --sh-4:0 14px 34px rgba(40,32,20,.15);
+  --sh-press:inset 0 2px 4px rgba(40,32,20,.12); /* @kind shadow */
+  --sh-focus:0 0 0 3px rgba(208,172,20,.34);
+
+  --sh-card:none; /* @kind shadow */   /* cards are FLAT. Opt in with <Card elevated>. */
+  --sh-float:var(--sh-3);     /* controls floating over imagery */
+  --sh-sheet:0 -8px 30px rgba(40,32,20,.16);
+  --sh-bar:0 -1px 0 var(--border-subtle);
+}

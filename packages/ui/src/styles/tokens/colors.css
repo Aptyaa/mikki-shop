@@ -1,0 +1,81 @@
+/* ── Palette: BUTTER — the palette, and the only one ──
+   FDF8E1 Cornsilk · FDF4CB Lemon chiffon · FCEFB4 Vanilla · FAE588 Jasmine · F9DC5C Naples yellow
+   plus a deep olive ink that does the work a second hue would.
+
+   A single-hue palette: calm and warm. Its cost is that
+   discount, rating and warning all live in the same hue and separate only by value —
+   so weight and placement carry more of the signalling than colour does.
+
+   Components must reference ONLY the semantic aliases below, never a ramp value — that layer is
+   what let the system change palette without touching a single .jsx. */
+:root{
+  /* — Butter ramp — */
+  --butter-50:#FFFDF4;--butter-100:#FDF8E1;--butter-150:#FDF4CB;--butter-200:#FCEFB4;
+  --butter-300:#FAE588;--butter-400:#F9DC5C;--butter-500:#F2CE33;--butter-600:#D0AC14;
+  --butter-700:#9C800C;--butter-800:#6B5807;
+
+  /* — Olive ink: the palette's only "second colour" — */
+  --olive-700:#4A4116;--olive-800:#3B3418;--olive-900:#2A2510;
+
+  /* — Warm neutrals, olive-shifted. No cold grey anywhere in this brand. — */
+  --ink-900:#2A2510;--ink-700:#4E4728;--ink-500:#756D4A;--ink-300:#A79E77;
+  --line-200:#F0E9CE;--line-300:#DFD5B0;
+
+  /* — Semantic status — */
+  --danger-500:#B8402A;--danger-100:#F8E2DD;
+  --success-500:var(--olive-700);--success-100:var(--butter-150);
+  --warning-500:var(--butter-700);--warning-100:var(--butter-150);
+  --info-500:var(--ink-500);--info-100:var(--butter-150);
+
+  /* — Surfaces — */
+  --bg-page:var(--butter-100);
+  --bg-elevated:var(--butter-50);
+  --surface-card:#FFFFFF;
+  --surface-sunken:var(--butter-150);
+  --surface-inverse:var(--olive-800);
+  --surface-tint:var(--butter-200);
+
+  /* — Text — */
+  --text-heading:var(--olive-900);
+  --text-body:var(--ink-700);
+  --text-muted:var(--ink-500);
+  --text-inverse:var(--butter-100);
+  --text-on-primary:var(--olive-900);
+  --text-price:var(--olive-900);
+  --text-price-sale:var(--butter-800);
+  --text-link:var(--butter-800);
+  --text-link-hover:#4F4104;
+
+  /* — Borders — */
+  --border-subtle:var(--line-200);
+  --border-strong:var(--line-300);
+  --border-tint:var(--butter-300);
+  --border-focus:var(--butter-600);
+
+  /* — Actions — */
+  --action-primary:var(--butter-400);
+  --action-primary-hover:var(--butter-300);
+  --action-primary-press:var(--butter-500);
+  --action-secondary:var(--olive-800);
+  --action-secondary-hover:var(--olive-900);
+  --action-disabled:var(--butter-200);
+  --action-ghost-hover:var(--butter-150);
+
+  /* — Accents: named by ROLE, not by colour — */
+  --nav-active:var(--butter-800);
+  --accent-fav:var(--butter-700);
+  --rating-star:var(--butter-500);
+  --ornament:var(--butter-300);
+
+  /* — Tags — */
+  --tag-new-bg:var(--olive-800);--tag-new-fg:var(--butter-200);
+  --tag-sale-bg:var(--butter-800);--tag-sale-fg:#FFFDF4;
+  --tag-soft-bg:var(--butter-200);--tag-soft-fg:var(--butter-800);
+
+  /* — Mascot discs. The one place light values are pinned and do NOT invert:
+       Микки has white fur and needs a light ground in every theme. — */
+  --disc-cream:var(--butter-150);
+  --disc-butter:var(--butter-300);
+  --disc-forest:#E4E7CE;
+  --disc-berry:#F7E4C2;
+}

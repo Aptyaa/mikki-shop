@@ -1,0 +1,13 @@
+/* Микки Шоп — design system entry point.
+   One palette ships: BUTTER (tokens/colors.css) — a single yellow ramp plus an olive ink.
+   Dark theme is not a palette and must stay: a Telegram Mini App inherits the user's theme. */
+@import url("tokens/fonts.css");
+@import url("tokens/colors.css");
+@import url("tokens/typography.css");
+@import url("tokens/spacing.css");
+@import url("tokens/radius.css");
+@import url("tokens/elevation.css");
+@import url("tokens/motion.css");
+@import url("tokens/platform.css");
+@import url("tokens/theme-dark.css");
+@import url("tokens/base.css");

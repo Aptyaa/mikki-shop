@@ -1,0 +1,23 @@
+:root{
+  --sp-0:0; /* @kind spacing */
+  --sp-1:2px;--sp-2:4px;--sp-3:8px;--sp-4:12px;--sp-5:16px;
+  --sp-6:20px;--sp-7:24px;--sp-8:32px;--sp-9:40px;--sp-10:48px;--sp-11:64px;
+
+  /* Layout. Opened up in Aug 2026: the first build was cramped at 390pt —
+     16px gutters with a 12px grid gap left product tiles touching. */
+  --gutter:20px;              /* screen edge padding, mini-app */
+  --grid-gap:16px;            /* product grid: column gap */
+  --grid-gap-row:28px;        /* product grid: row gap — deliberately larger than the
+                                 column gap, so rows read as rows without card borders */
+  --section-gap:36px;         /* between screen sections */
+  --content-max:420px; /* @kind spacing */
+  --content-max-web:1120px; /* @kind spacing */
+
+  /* Component internals */
+  --btn-pad-x:20px;--btn-pad-x-sm:14px;
+  --btn-h-lg:52px;--btn-h-md:44px;--btn-h-sm:34px;
+  --card-pad:16px;--card-pad-lg:20px;
+  --tag-pad-x:8px;--tag-h:22px;
+  --field-h:48px;--field-pad-x:14px;
+  --tap-min:44px;             /* never smaller */
+}

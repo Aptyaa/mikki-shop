@@ -1,0 +1,53 @@
+/* Dark theme for the default (Butter) palette.
+   Telegram Mini Apps inherit the user's Telegram theme, so the whole system is
+   expressed through semantic aliases and only these flip.
+   Status: authored, NOT yet visually reviewed on device. */
+[data-theme="dark"]{
+  --bg-page:#191509;
+  --bg-elevated:#221D0D;
+  --surface-card:#2A2411;
+  --surface-sunken:#120F06;
+  --surface-inverse:var(--butter-100);
+  --surface-tint:#332B10;
+
+  --text-heading:var(--butter-100);
+  --text-body:#DCD5BC;
+  --text-muted:#9A9375;
+  --text-inverse:var(--olive-900);
+  --text-on-primary:#221D0D;
+  --text-price:#FFFDF4;
+  --text-price-sale:var(--butter-300);
+  --text-link:var(--butter-300);
+  --text-link-hover:var(--butter-200);
+
+  --border-subtle:#332C14;
+  --border-strong:#4A4020;
+  --border-tint:#4A4020;
+
+  --action-primary:var(--butter-400);
+  --action-primary-hover:var(--butter-300);
+  --action-primary-press:var(--butter-500);
+  --action-secondary:var(--butter-100);
+  --action-disabled:#332C14;
+  --action-ghost-hover:#2A2411;
+
+  --nav-active:var(--butter-300);
+  --accent-fav:var(--butter-400);
+  --rating-star:var(--butter-400);
+  --ornament:#4A4020;
+
+  --tag-new-bg:var(--butter-300);--tag-new-fg:#221D0D;
+  --tag-sale-bg:var(--butter-600);--tag-sale-fg:#221D0D;
+  --tag-soft-bg:#3D3416;--tag-soft-fg:var(--butter-300);
+
+  --danger-500:#E8735C;--danger-100:#3A1C15;
+  --success-500:var(--butter-300);--success-100:#2A2E14;
+  --warning-500:var(--butter-400);--warning-100:#332B10;
+  --info-500:#A79E77;--info-100:#262212;
+
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 2px 8px rgba(0,0,0,.45);
+  --sh-3:0 6px 18px rgba(0,0,0,.5);
+  --sh-4:0 14px 34px rgba(0,0,0,.55);
+  --sh-focus:0 0 0 3px rgba(249,220,92,.40);
+}

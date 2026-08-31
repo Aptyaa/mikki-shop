@@ -1,0 +1,11 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Semantic" subtitle="Success и warning заимствуют палитру. Только danger приносит свой тон — он один и должен выделяться." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Semantic</title><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:170px;box-sizing:border-box;overflow:hidden}
+.sw{display:flex;gap:8px}.sw>div{flex:1;display:flex;flex-direction:column;gap:6px}
+.chip{height:56px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px rgba(0,0,0,.07)}
+.nm{font:600 11px/1.2 var(--font-body);color:var(--text-heading)}
+.hx{font:400 10px/1.2 var(--font-mono);color:var(--text-muted);letter-spacing:.02em}
+.tk{font:400 10px/1.2 var(--font-mono);color:var(--ink-300)}</style></head><body><div class="sw">
+<div><div class="chip" style="background:#4A4116"></div><div class="nm">success</div><div class="hx">#4A4116</div><div class="tk">olive 700</div></div><div><div class="chip" style="background:#FDF4CB"></div><div class="nm">success bg</div><div class="hx">#FDF4CB</div></div><div><div class="chip" style="background:#9C800C"></div><div class="nm">warning</div><div class="hx">#9C800C</div><div class="tk">butter 700</div></div><div><div class="chip" style="background:#FDF4CB"></div><div class="nm">warning bg</div><div class="hx">#FDF4CB</div></div><div><div class="chip" style="background:#B8402A"></div><div class="nm">danger</div><div class="hx">#B8402A</div><div class="tk">единственный чужой тон</div></div><div><div class="chip" style="background:#F8E2DD"></div><div class="nm">danger bg</div><div class="hx">#F8E2DD</div></div><div><div class="chip" style="background:#756D4A"></div><div class="nm">info</div><div class="hx">#756D4A</div><div class="tk">ink 500</div></div><div><div class="chip" style="background:#FDF4CB"></div><div class="nm">info bg</div><div class="hx">#FDF4CB</div></div>
+</div>
+<div class="tk" style="margin-top:14px">Success, warning и info делят один фон — различаются текстом и иконкой, не заливкой. Danger — единственный, у кого свой фон.</div></body></html>

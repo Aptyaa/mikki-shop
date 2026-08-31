@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x620" name="Lockups — все компоновки" subtitle="horizontal рабочая · arc и perched витринные · peeking для узких мест · offset сдвигает Микки по строке" -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Lockups</title>
+<link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>body{margin:0;padding:16px;background:var(--bg-page)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.cell{background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;min-height:150px;justify-content:center}
+.lab{font:600 10px/1 var(--font-body);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.inv{background:var(--surface-inverse);border-color:transparent}
+.inv .lab{color:var(--butter-300)}</style></head><body><div id="root"></div>
+<script type="text/babel">
+const { Logo } = window.MickeyShopDesignSystem_fb236a;
+function Demo(){return <div className="grid">
+  <div className="cell"><Logo variant="arc" size="md"/><span className="lab">arc — вывеска</span></div>
+  <div className="cell"><Logo variant="perched" size="lg"/><span className="lab">perched — опирается</span></div>
+  <div className="cell"><Logo variant="peeking" size="md"/><span className="lab">peeking — выглядывает</span></div>
+  <div className="cell"><Logo variant="horizontal" size="md"/><span className="lab">horizontal — рабочая</span></div>
+  <div className="cell"><Logo variant="vertical" size="sm"/><span className="lab">vertical</span></div>
+  <div className="cell inv"><Logo variant="perched" size="md" tone="inverse" word="Mickey Shop"/><span className="lab">на оливковом</span></div>
+  <div className="cell"><Logo variant="perched" size="md" offset="first-word"/><span className="lab">perched · first-word</span></div>
+  <div className="cell"><Logo variant="perched" size="md" offset="word-gap"/><span className="lab">perched · word-gap</span></div>
+  <div className="cell"><Logo variant="perched" size="md" offset="last-word"/><span className="lab">perched · last-word</span></div>
+  <div className="cell"><Logo variant="peeking" size="md" offset="first-word"/><span className="lab">peeking · first-word</span></div>
+  <div className="cell"><Logo variant="peeking" size="md" offset="word-gap"/><span className="lab">peeking · word-gap</span></div>
+  <div className="cell"><Logo variant="peeking" size="md" offset="last-word"/><span className="lab">peeking · last-word</span></div>
+</div>;}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script></body></html>

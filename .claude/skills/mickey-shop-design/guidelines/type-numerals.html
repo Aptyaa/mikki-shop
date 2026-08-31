@@ -1,0 +1,15 @@
+<!-- @dsCard group="Type" viewport="700x150" name="Prices & numerals" subtitle="Display 800. Space as thousands separator, ₽ after, never kopecks." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Prices</title><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:150px;box-sizing:border-box;overflow:hidden}
+.sw{display:flex;gap:8px}.sw>div{flex:1;display:flex;flex-direction:column;gap:6px}
+.chip{height:56px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px rgba(36,26,18,.06)}
+.nm{font:600 11px/1.2 var(--font-body);color:var(--text-heading)}
+.hx{font:400 10px/1.2 var(--font-mono);color:var(--text-muted);letter-spacing:.02em}
+.tk{font:400 10px/1.2 var(--font-mono);color:var(--ink-300)}
+.row{display:flex;gap:12px;align-items:baseline}</style></head><body>
+<div style="display:flex;gap:32px;align-items:baseline;font-family:var(--font-display);font-weight:800;color:var(--text-heading)">
+<div><div class="tk" style="font-weight:400">--fs-price-lg 26</div><div style="font-size:26px">1 490 ₽</div></div>
+<div><div class="tk" style="font-weight:400">--fs-price 19</div><div style="font-size:19px">2 390 ₽</div></div>
+<div><div class="tk" style="font-weight:400">sale</div><div style="font-size:19px;color:var(--text-price-sale)">1 490 ₽ <span style="font-family:var(--font-body);font-weight:400;font-size:13px;color:var(--text-muted);text-decoration:line-through">2 190 ₽</span></div></div>
+<div><div class="tk" style="font-weight:400">total</div><div style="font-size:26px">2 980 ₽</div></div>
+</div></body></html>

@@ -1,0 +1,17 @@
+/* ── Typefaces ──
+   Wordmark: Bubblez Graffiti (OFL), self-hosted. Used ONLY for «Микки Шоп» / «Mickey Shop».
+   Display:  Baloo 2 — headings, prices, button labels.
+   Body:     Onest — a Cyrillic-native grotesque.
+   Display and body still load from Google Fonts; vendor them before production. */
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Onest:wght@300..800&display=swap");
+
+@font-face{
+  font-family:"Bubblez Graffiti";
+  src:url("../../assets/fonts/BubblezGraffiti-Regular.otf") format("opentype");
+  font-weight:400;font-style:normal;font-display:swap;
+}
+@font-face{
+  font-family:"Bubblez Graffiti";
+  src:url("../../assets/fonts/BubblezGraffiti-Italic.otf") format("opentype");
+  font-weight:400;font-style:italic;font-display:swap;
+}

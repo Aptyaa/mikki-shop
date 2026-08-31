@@ -1,0 +1,19 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="Лоадер — лапка" subtitle="Единственный индикатор загрузки в системе. Восемь дискретных шагов, не плавное вращение." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Лапка</title><link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:180px;box-sizing:border-box;overflow:hidden}
+.row{display:flex;gap:34px;align-items:center}
+.cell{display:flex;flex-direction:column;align-items:center;gap:10px}
+.tk{font:400 10px/1.2 var(--font-mono);color:var(--ink-300)}
+.paw{display:inline-flex;animation:ms-paw-turn 1.1s steps(8,end) infinite}
+.slow{animation-duration:1.6s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 22px;border-radius:var(--r-pill);border:none;background:var(--action-disabled);color:var(--text-muted);font:700 15px var(--font-display)}
+.mb{width:220px;height:56px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--action-primary);color:var(--text-on-primary);font:600 15px var(--font-body);letter-spacing:.02em}</style></head><body>
+<div class="row">
+<div class="cell"><span class="paw" style="color:var(--action-primary)"><i data-lucide="paw-print" width="20" height="20" stroke-width="2.25"></i></span><span class="tk">20px · 1.1s</span></div>
+<div class="cell"><span class="paw slow" style="color:var(--text-heading)"><i data-lucide="paw-print" width="40" height="40" stroke-width="2.25"></i></span><span class="tk">40px · 1.6s</span></div>
+<div class="cell"><span class="btn"><span class="paw"><i data-lucide="paw-print" width="18" height="18" stroke-width="2.25"></i></span>Загрузка</span><span class="tk">Button loading</span></div>
+<div class="cell"><span class="mb"><span class="paw"><i data-lucide="paw-print" width="17" height="17" stroke-width="2.25"></i></span>ОПЛАТА</span><span class="tk">MainButton progress</span></div>
+</div>
+<div class="tk" style="margin-top:18px">Кольцевой спиннер в этом бренде не используется. Для ожиданий дольше ~1,5 с — Skeleton, повторяющий реальную раскладку.</div>
+<script>lucide.createIcons({nameAttr:"data-lucide"});</script></body></html>

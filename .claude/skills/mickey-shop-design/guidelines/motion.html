@@ -1,0 +1,15 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Motion" subtitle="140/220/360ms. --ease-wag overshoots — the brand's tail wag, used on press and toggles." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Motion</title><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:180px;box-sizing:border-box;overflow:hidden}
+.sw{display:flex;gap:8px}.sw>div{flex:1;display:flex;flex-direction:column;gap:6px}
+.chip{height:56px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px rgba(36,26,18,.06)}
+.nm{font:600 11px/1.2 var(--font-body);color:var(--text-heading)}
+.hx{font:400 10px/1.2 var(--font-mono);color:var(--text-muted);letter-spacing:.02em}
+.tk{font:400 10px/1.2 var(--font-mono);color:var(--ink-300)}
+.row{display:flex;gap:12px;align-items:baseline}</style></head><body>
+<style>@keyframes slide{0%,100%{transform:translateX(0)}50%{transform:translateX(120px)}}
+.b{width:44px;height:44px;border-radius:50%;background:var(--action-primary)}</style>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:16px"><div class="tk" style="width:210px">--dur-fast 140ms · --ease-out</div><div class="b" style="animation:slide 1.4s cubic-bezier(.22,.61,.36,1) infinite"></div></div><div style="display:flex;align-items:center;gap:16px"><div class="tk" style="width:210px">--dur-base 220ms · --ease-out</div><div class="b" style="animation:slide 2s cubic-bezier(.22,.61,.36,1) infinite"></div></div><div style="display:flex;align-items:center;gap:16px"><div class="tk" style="width:210px">--dur-base · --ease-wag</div><div class="b" style="animation:slide 2s cubic-bezier(.34,1.46,.54,1) infinite"></div></div>
+</div>
+<div class="tk" style="margin-top:10px">Press: scale(.96). Reduced-motion collapses all durations to 0.</div></body></html>

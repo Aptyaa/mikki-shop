@@ -1,0 +1,19 @@
+/* Telegram / VK Mini App platform envelope.
+   Telegram draws its own MainButton + BackButton OUTSIDE the webview, but the
+   webview is resized late and on some clients overlaps — always reserve the space. */
+:root{
+  --viewport-min:320px; /* @kind spacing */
+  --viewport-base:390px; /* @kind spacing */ /* design width */
+  --viewport-max:480px; /* @kind spacing */
+
+  --tg-header-h:56px; /* @kind spacing */ /* Telegram's own title bar, not ours to draw */
+  --tg-mainbutton-h:56px; /* @kind spacing */ /* reserved strip: never place a CTA or nav here */
+  --safe-top:env(safe-area-inset-top,0px); /* @kind spacing */
+  --safe-bottom:env(safe-area-inset-bottom,0px); /* @kind spacing */
+
+  /* Bottom padding every scrollable screen must end with. */
+  --safe-scroll-bottom:calc(var(--tg-mainbutton-h) + var(--safe-bottom) + var(--sp-6)); /* @kind spacing */
+  /* When we draw our own sticky bar (VK, or Telegram without MainButton). */
+  --appbar-h:60px; /* @kind spacing */
+  --safe-scroll-bottom-appbar:calc(var(--appbar-h) + var(--safe-bottom) + var(--sp-6)); /* @kind spacing */
+}

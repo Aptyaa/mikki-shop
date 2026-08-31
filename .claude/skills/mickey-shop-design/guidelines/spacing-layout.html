@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x260" name="Mini-app layout & safe area" subtitle="390px design width, 16px gutters, and the reserved bottom strip Telegram owns." -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Layout</title><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--bg-page);height:260px;box-sizing:border-box;overflow:hidden}
+.sw{display:flex;gap:8px}.sw>div{flex:1;display:flex;flex-direction:column;gap:6px}
+.chip{height:56px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px rgba(36,26,18,.06)}
+.nm{font:600 11px/1.2 var(--font-body);color:var(--text-heading)}
+.hx{font:400 10px/1.2 var(--font-mono);color:var(--text-muted);letter-spacing:.02em}
+.tk{font:400 10px/1.2 var(--font-mono);color:var(--ink-300)}
+.row{display:flex;gap:12px;align-items:baseline}</style></head><body>
+<div style="display:flex;gap:20px;align-items:flex-start">
+<div style="width:200px;border:1.5px solid var(--border-strong);border-radius:var(--r-lg);overflow:hidden;background:#fff">
+  <div style="height:22px;background:var(--surface-inverse);color:var(--text-inverse);font:600 9px var(--font-body);display:flex;align-items:center;justify-content:center">Telegram header — не наш</div>
+  <div style="display:flex;height:150px">
+    <div style="width:16px;background:repeating-linear-gradient(45deg,var(--butter-200),var(--butter-200) 3px,transparent 3px,transparent 6px)"></div>
+    <div style="flex:1;padding:8px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start">
+      <div style="height:58px;background:var(--butter-200);border-radius:10px"></div><div style="height:58px;background:var(--butter-200);border-radius:10px"></div>
+      <div style="height:58px;background:var(--butter-200);border-radius:10px"></div><div style="height:58px;background:var(--butter-200);border-radius:10px"></div></div>
+    <div style="width:16px;background:repeating-linear-gradient(45deg,var(--butter-200),var(--butter-200) 3px,transparent 3px,transparent 6px)"></div>
+  </div>
+  <div style="height:36px;background:repeating-linear-gradient(45deg,var(--danger-100),var(--danger-100) 4px,transparent 4px,transparent 8px);border-top:1px dashed var(--danger-500);display:flex;align-items:center;justify-content:center;font:600 9px var(--font-body);color:var(--danger-500)">MainButton — 56px, не занимать</div>
+</div>
+<div style="flex:1;font:400 13px/1.6 var(--font-body);color:var(--text-body)">
+<div><b style="font-family:var(--font-display)">--viewport-base</b> 390px · <b style="font-family:var(--font-display)">--content-max</b> 420px</div>
+<div><b style="font-family:var(--font-display)">--gutter</b> 16px, hatched left/right</div>
+<div><b style="font-family:var(--font-display)">--grid-gap</b> 12px — two product tiles per row</div>
+<div><b style="font-family:var(--font-display)">--section-gap</b> 28px between blocks</div>
+<div style="margin-top:8px;color:var(--danger-500)"><b style="font-family:var(--font-display)">--safe-scroll-bottom</b> = 56 + safe-area + 20. Every scroll container ends with it. No CTA, tab bar or sticky element may live inside that strip.</div>
+</div></div></body></html>

@@ -1,0 +1,44 @@
+:root{
+  --font-wordmark:"Bubblez Graffiti","Baloo 2",system-ui,sans-serif;
+  --font-display:"Baloo 2","Comic Sans MS",system-ui,sans-serif;
+  --font-body:"Onest",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,monospace;
+
+  /* Weights — Baloo 2 wants 600–800, Onest 400–600. */
+  --fw-regular:400; /* @kind other */
+  --fw-medium:500; /* @kind other */
+  --fw-semibold:600; /* @kind other */
+  --fw-bold:700; /* @kind other */
+  --fw-extrabold:800; /* @kind other */
+
+  /* Mobile-first scale (Telegram Mini App, 390pt base) */
+  --fs-display:34px;
+  --lh-display:1.05; /* @kind other */
+  --ls-display:-0.02em; /* @kind other */
+  --fs-h1:26px;
+  --lh-h1:1.12; /* @kind other */
+  --ls-h1:-0.015em; /* @kind other */
+  --fs-h2:21px;
+  --lh-h2:1.18; /* @kind other */
+  --ls-h2:-0.01em; /* @kind other */
+  --fs-h3:17px;
+  --lh-h3:1.25; /* @kind other */
+  --ls-h3:0; /* @kind other */
+  --fs-body:15px;
+  --lh-body:1.5; /* @kind other */
+  --fs-body-sm:13px;
+  --lh-body-sm:1.45; /* @kind other */
+  --fs-caption:12px;
+  --lh-caption:1.35; /* @kind other */
+  --fs-micro:11px;
+  --lh-micro:1.2; /* @kind other */
+  --ls-micro:0.06em; /* @kind other */
+
+  --fs-price:19px;
+  --fs-price-lg:26px;
+
+  /* Desktop / VK web step-up */
+  --fs-display-lg:56px;
+  --fs-h1-lg:40px;
+  --fs-h2-lg:28px;
+}
