@@ -1,7 +1,7 @@
 import React from "react";
-import { PhotoSlot } from "./PhotoSlot.jsx";
-import { PriceBlock } from "./PriceBlock.jsx";
-import { Dot } from "../core/Dot.jsx";
+import { PhotoSlot } from "./PhotoSlot";
+import { PriceBlock } from "./PriceBlock";
+import { Dot } from "../core/Dot";
 
 /** One product as a list row: print, name, meta, price. The catalogue's primary layout.
  *  Rows separate by a hairline rule — never by a card. */

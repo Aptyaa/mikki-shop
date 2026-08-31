@@ -1,41 +1,41 @@
-export { Logo } from "./components/brand/Logo.jsx";
-export { MascotBadge } from "./components/brand/MascotBadge.jsx";
+export { Logo } from "./components/brand/Logo";
+export { MascotBadge } from "./components/brand/MascotBadge";
 
-export { Icon } from "./components/icon/Icon.jsx";
+export { Icon } from "./components/icon/Icon";
 
-export { Badge } from "./components/core/Badge.jsx";
-export { Band } from "./components/core/Band.jsx";
-export { Button } from "./components/core/Button.jsx";
-export { Card } from "./components/core/Card.jsx";
-export { Chip } from "./components/core/Chip.jsx";
-export { Divider } from "./components/core/Divider.jsx";
-export { Dot } from "./components/core/Dot.jsx";
-export { IconButton } from "./components/core/IconButton.jsx";
-export { Tag } from "./components/core/Tag.jsx";
+export { Badge } from "./components/core/Badge";
+export { Band } from "./components/core/Band";
+export { Button } from "./components/core/Button";
+export { Card } from "./components/core/Card";
+export { Chip } from "./components/core/Chip";
+export { Divider } from "./components/core/Divider";
+export { Dot } from "./components/core/Dot";
+export { IconButton } from "./components/core/IconButton";
+export { Tag } from "./components/core/Tag";
 
-export { Checkbox } from "./components/forms/Checkbox.jsx";
-export { Input } from "./components/forms/Input.jsx";
-export { RadioTile } from "./components/forms/RadioTile.jsx";
-export { Select } from "./components/forms/Select.jsx";
-export { Switch } from "./components/forms/Switch.jsx";
+export { Checkbox } from "./components/forms/Checkbox";
+export { Input } from "./components/forms/Input";
+export { RadioTile } from "./components/forms/RadioTile";
+export { Select } from "./components/forms/Select";
+export { Switch } from "./components/forms/Switch";
 
-export { CartLine } from "./components/commerce/CartLine.jsx";
-export { ColorPicker } from "./components/commerce/ColorPicker.jsx";
-export { PhotoSlot } from "./components/commerce/PhotoSlot.jsx";
-export { PriceBlock } from "./components/commerce/PriceBlock.jsx";
-export { ProductCard } from "./components/commerce/ProductCard.jsx";
-export { ProductRow } from "./components/commerce/ProductRow.jsx";
-export { QuantityStepper } from "./components/commerce/QuantityStepper.jsx";
-export { RatingStars } from "./components/commerce/RatingStars.jsx";
-export { SizeSelector } from "./components/commerce/SizeSelector.jsx";
+export { CartLine } from "./components/commerce/CartLine";
+export { ColorPicker } from "./components/commerce/ColorPicker";
+export { PhotoSlot } from "./components/commerce/PhotoSlot";
+export { PriceBlock } from "./components/commerce/PriceBlock";
+export { ProductCard } from "./components/commerce/ProductCard";
+export { ProductRow } from "./components/commerce/ProductRow";
+export { QuantityStepper } from "./components/commerce/QuantityStepper";
+export { RatingStars } from "./components/commerce/RatingStars";
+export { SizeSelector } from "./components/commerce/SizeSelector";
 
-export { AppBar } from "./components/navigation/AppBar.jsx";
-export { MainButtonMock } from "./components/navigation/MainButtonMock.jsx";
-export { SectionHeader } from "./components/navigation/SectionHeader.jsx";
-export { Sheet } from "./components/navigation/Sheet.jsx";
-export { TabBar } from "./components/navigation/TabBar.jsx";
+export { AppBar } from "./components/navigation/AppBar";
+export { MainButtonMock } from "./components/navigation/MainButtonMock";
+export { SectionHeader } from "./components/navigation/SectionHeader";
+export { Sheet } from "./components/navigation/Sheet";
+export { TabBar } from "./components/navigation/TabBar";
 
-export { EmptyState } from "./components/feedback/EmptyState.jsx";
-export { Notice } from "./components/feedback/Notice.jsx";
-export { PawSpinner } from "./components/feedback/PawSpinner.jsx";
-export { Skeleton } from "./components/feedback/Skeleton.jsx";
+export { EmptyState } from "./components/feedback/EmptyState";
+export { Notice } from "./components/feedback/Notice";
+export { PawSpinner } from "./components/feedback/PawSpinner";
+export { Skeleton } from "./components/feedback/Skeleton";

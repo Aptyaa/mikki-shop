@@ -1,5 +1,5 @@
 import React from "react";
-import { PawSpinner } from "../feedback/PawSpinner.jsx";
+import { PawSpinner } from "../feedback/PawSpinner";
 
 const btnBase={display:"inline-flex",alignItems:"center",justifyContent:"center",gap:"var(--sp-3)",
   fontFamily:"var(--font-display)",fontWeight:"var(--fw-bold)",letterSpacing:"-0.005em",

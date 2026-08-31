@@ -1,5 +1,5 @@
 import React from "react";
-import { Badge } from "../core/Badge.jsx";
+import { Badge } from "../core/Badge";
 
 /** Bottom navigation. Sits ABOVE the reserved Telegram MainButton strip. */
 export function TabBar({items=[],value,onChange,reserveMainButton=true,style,...rest}){

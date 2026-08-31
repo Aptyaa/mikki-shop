@@ -1,7 +1,7 @@
 import React from "react";
-import { PhotoSlot } from "./PhotoSlot.jsx";
-import { PriceBlock } from "./PriceBlock.jsx";
-import { QuantityStepper } from "./QuantityStepper.jsx";
+import { PhotoSlot } from "./PhotoSlot";
+import { PriceBlock } from "./PriceBlock";
+import { QuantityStepper } from "./QuantityStepper";
 
 /** One row in the cart: photo, title, variant, quantity, price. */
 export function CartLine({title,variant,price,image,qty=1,onQty,onRemove,style,...rest}){

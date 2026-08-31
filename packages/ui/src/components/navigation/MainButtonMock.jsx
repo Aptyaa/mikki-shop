@@ -1,5 +1,5 @@
 import React from "react";
-import { PawSpinner } from "../feedback/PawSpinner.jsx";
+import { PawSpinner } from "../feedback/PawSpinner";
 
 /** Visual stand-in for Telegram's native MainButton. Mockups only — in production call
  *  window.Telegram.WebApp.MainButton.setParams({text, color}) instead of rendering this. */

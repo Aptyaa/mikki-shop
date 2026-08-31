@@ -1,5 +1,5 @@
 import React from "react";
-import { MascotBadge } from "../brand/MascotBadge.jsx";
+import { MascotBadge } from "../brand/MascotBadge";
 
 /** Empty cart, no results, no orders — always the mascot plus one way forward. */
 export function EmptyState({title,body,action,tone="cream",compact=false,style,...rest}){

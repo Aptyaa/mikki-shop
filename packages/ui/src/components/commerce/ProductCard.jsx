@@ -1,7 +1,7 @@
 import React from "react";
-import { PhotoSlot } from "./PhotoSlot.jsx";
-import { PriceBlock } from "./PriceBlock.jsx";
-import { Tag } from "../core/Tag.jsx";
+import { PhotoSlot } from "./PhotoSlot";
+import { PriceBlock } from "./PriceBlock";
+import { Tag } from "../core/Tag";
 
 /** Grid tile for one product. No box: the photograph is the tile.
  *  Two per row at 390pt, separated by --grid-gap / --grid-gap-row. */
