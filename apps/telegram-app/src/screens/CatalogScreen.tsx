@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  AppBar,
   Band,
   Button,
   Divider,
@@ -19,6 +18,7 @@ import {
 } from "@mikki-shop/ui";
 import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
+import { ScreenBar } from "../components/ScreenBar";
 import { plural } from "../lib/plural";
 
 const SORTS: { key: CatalogSort; label: string }[] = [
@@ -117,7 +117,7 @@ export function CatalogScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
-      <AppBar
+      <ScreenBar
         title="Каталог"
         subtitle={head ? models(total) : undefined}
         right={
