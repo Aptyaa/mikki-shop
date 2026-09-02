@@ -1,17 +1,79 @@
 import React from "react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Grid2x2,
+  Heart,
+  Info,
+  MapPin,
+  Minus,
+  Package,
+  PawPrint,
+  Pencil,
+  Plus,
+  Ruler,
+  Search,
+  Share2,
+  ShoppingBag,
+  SlidersHorizontal,
+  Star,
+  Trash2,
+  TriangleAlert,
+  Truck,
+  User,
+  X,
+} from "lucide-react";
 
-/** Lucide glyph wrapper. Requires the Lucide UMD script on the page (see ICONOGRAPHY in readme.md). */
-export function Icon({name,size=20,strokeWidth=2,color="currentColor",style,...rest}){
-  const ref=React.useRef(null);
-  React.useEffect(()=>{
-    const el=ref.current;
-    if(el&&window.lucide&&window.lucide.createIcons){
-      el.innerHTML="";
-      const i=document.createElement("i");
-      i.setAttribute("data-lucide",name);
-      el.appendChild(i);
-      window.lucide.createIcons({nameAttr:"data-lucide",attrs:{width:size,height:size,"stroke-width":strokeWidth},root:el});
+// Дизайн-система пришла с UMD-обёрткой над `window.lucide`: она работала в
+// standalone-превью инструмента, но в сборке приложения глобали нет — иконки
+// молча рендерились пустыми.
+//
+// Реестр перечислен поимённо намеренно: `import { icons }` тянет весь набор
+// Lucide (~800 КБ в бандл), а Mini App грузится по мобильной сети. Нужен новый
+// глиф — добавьте его сюда; это и есть та самая «одна точка подмены набора».
+const GLYPHS = {
+  "alert-triangle": TriangleAlert,
+  check: Check,
+  "chevron-left": ChevronLeft,
+  "chevron-right": ChevronRight,
+  "credit-card": CreditCard,
+  "grid-2x2": Grid2x2,
+  heart: Heart,
+  info: Info,
+  "map-pin": MapPin,
+  minus: Minus,
+  package: Package,
+  "paw-print": PawPrint,
+  pencil: Pencil,
+  plus: Plus,
+  ruler: Ruler,
+  search: Search,
+  "share-2": Share2,
+  "shopping-bag": ShoppingBag,
+  "sliders-horizontal": SlidersHorizontal,
+  star: Star,
+  "trash-2": Trash2,
+  truck: Truck,
+  user: User,
+  x: X,
+};
+
+/** Lucide glyph. Имя — kebab-case: "heart", "shopping-bag", "chevron-right". */
+export function Icon({ name, size = 20, strokeWidth = 2, color = "currentColor", style, ...rest }) {
+  const Glyph = GLYPHS[name];
+  if (!Glyph) {
+    if (import.meta.env?.DEV) {
+      console.warn(`Icon: глифа «${name}» нет в реестре components/icon/Icon.jsx`);
     }
-  },[name,size,strokeWidth]);
-  return <span ref={ref} aria-hidden="true" style={{display:"inline-flex",width:size,height:size,color,flexShrink:0,...style}} {...rest}/>;
+    return null;
+  }
+  return (
+    <span aria-hidden="true"
+      style={{ display: "inline-flex", width: size, height: size, color, flexShrink: 0, ...style }}
+      {...rest}>
+      <Glyph size={size} strokeWidth={strokeWidth} absoluteStrokeWidth />
+    </span>
+  );
 }

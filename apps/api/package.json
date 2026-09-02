@@ -8,7 +8,9 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "migrate": "dotenv -e ../../.env -- prisma migrate dev"
+    "migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "seed": "dotenv -e ../../.env -- node prisma/seed.mjs"
   },
   "dependencies": {
     "@mikki-shop/shared-types": "workspace:*",

@@ -14,3 +14,33 @@ model User {
   telegramId String   @unique
   createdAt  DateTime @default(now())
 }
+
+model Category {
+  id        String    @id @default(uuid())
+  key       String    @unique
+  label     String
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id         String   @id @default(uuid())
+  slug       String   @unique
+  title      String
+  /// Целые рубли, без копеек — так же, как цена показывается в интерфейсе.
+  price      Int
+  wasPrice   Int?
+  tag        String?
+  tagTone    String?
+  sizes      String[]
+  soldOut    Boolean  @default(false)
+  /// Заметка об остатке, если он мал: «Остался последний размер S».
+  stockNote  String?
+  /// Вес для сортировки «Популярные».
+  popularity Int      @default(0)
+  createdAt  DateTime @default(now())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}

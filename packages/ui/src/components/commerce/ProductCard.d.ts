@@ -9,8 +9,8 @@ export interface ProductCardProps {
   /** Corner label text, e.g. "−30%" or "НОВИНКА". */
   tag?: string;
   tagTone?: "new" | "sale" | "soft" | "neutral" | "outline";
-  /** Available sizes as a short string, e.g. "XS · S · M". */
-  sizes?: string;
+  /** Строка под ценой: размеры «XS · S · M» либо заметка об остатке с `Dot`. */
+  sizes?: React.ReactNode;
   favourite?: boolean;
   onFavourite?: () => void;
   onClick?: () => void;
