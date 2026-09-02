@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "postinstall": "pnpm --filter shared-types build",
     "dev:api": "pnpm --filter api dev",
     "dev:telegram-app": "pnpm --filter telegram-app dev",
     "build": "pnpm --filter shared-types build && pnpm --filter ui build && pnpm -r --filter=./apps/* build",
