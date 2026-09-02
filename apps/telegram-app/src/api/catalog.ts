@@ -26,6 +26,8 @@ export function fetchProducts(query: CatalogQuery, signal?: AbortSignal): Promis
   if (query.size) params.set("size", query.size);
   if (query.sort) params.set("sort", query.sort);
   if (query.q) params.set("q", query.q);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
 
   const search = params.toString();
   return get<CatalogResponse>(`/catalog/products${search ? `?${search}` : ""}`, signal);

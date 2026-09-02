@@ -9,7 +9,7 @@ import type {
   TagTone,
 } from "@mikki-shop/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
-import { CATALOG_SIZES, TAG_TONES } from "./catalog.constants";
+import { CATALOG_PAGE_SIZE, CATALOG_SIZES, TAG_TONES } from "./catalog.constants";
 
 const SORT_ORDER: Record<string, Prisma.ProductOrderByWithRelationInput[]> = {
   pop: [{ popularity: "desc" }, { createdAt: "desc" }],
@@ -74,21 +74,43 @@ export class CatalogService {
       ...(query.size ? { sizes: { has: query.size } } : {}),
     };
 
-    const [rows, total, scopeRows] = await Promise.all([
+    const limit = query.limit ?? CATALOG_PAGE_SIZE;
+    const offset = query.offset ?? 0;
+
+    // Сортировка добита `id`: без него у товаров с одинаковой популярностью
+    // порядок между страницами не определён, и один и тот же товар может
+    // приехать дважды, а другой — не приехать вовсе.
+    const orderBy = [...(SORT_ORDER[query.sort ?? "pop"] ?? SORT_ORDER.pop), { id: "asc" as const }];
+
+    const [rows, matched, total, scopeRows] = await Promise.all([
       this.prisma.product.findMany({
         where,
         include: { category: true },
-        orderBy: SORT_ORDER[query.sort ?? "pop"] ?? SORT_ORDER.pop,
+        orderBy,
+        take: limit,
+        skip: offset,
       }),
+      this.prisma.product.count({ where }),
       this.prisma.product.count(),
-      this.prisma.product.findMany({ where: scope, select: { sizes: true } }),
+      // Размеры распроданных товаров не считаются доступными: иначе фильтр
+      // предлагает размер, по которому нечего купить.
+      // Выборка не ограничена намеренно — таблица в десятки строк, и урезать её
+      // означало бы соврать в фасете. Когда каталог вырастет, это место
+      // переписывается на `SELECT DISTINCT unnest(sizes)`.
+      this.prisma.product.findMany({
+        where: { ...scope, soldOut: false },
+        select: { sizes: true },
+      }),
     ]);
 
     const available = new Set(scopeRows.flatMap((row) => row.sizes));
 
     return {
       items: rows.map(toDto),
+      matched,
       total,
+      offset,
+      limit,
       sizes: [...CATALOG_SIZES],
       availableSizes: CATALOG_SIZES.filter((size) => available.has(size)),
     };
