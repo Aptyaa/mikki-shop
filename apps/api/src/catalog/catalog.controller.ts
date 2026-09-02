@@ -39,8 +39,9 @@ export class CatalogController {
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
   ): Promise<CatalogResponse> {
-    // Значения из query приходят от клиента: всё, что не входит в известный
-    // набор, отбрасывается, а не передаётся в запрос к БД.
+    // Значения из query приходят от клиента: размер, сортировка и числа
+    // приводятся к известному набору. `category` сверяется не со списком, а с
+    // данными — неизвестный ключ честно даёт пустую выдачу, а не весь каталог.
     return this.catalog.products({
       ...(category ? { category } : {}),
       ...(size && (CATALOG_SIZES as readonly string[]).includes(size)

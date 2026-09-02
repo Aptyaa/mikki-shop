@@ -92,7 +92,15 @@ export class CatalogService {
       }),
       this.prisma.product.count({ where }),
       this.prisma.product.count(),
-      this.prisma.product.findMany({ where: scope, select: { sizes: true } }),
+      // Размеры распроданных товаров не считаются доступными: иначе фильтр
+      // предлагает размер, по которому нечего купить.
+      // Выборка не ограничена намеренно — таблица в десятки строк, и урезать её
+      // означало бы соврать в фасете. Когда каталог вырастет, это место
+      // переписывается на `SELECT DISTINCT unnest(sizes)`.
+      this.prisma.product.findMany({
+        where: { ...scope, soldOut: false },
+        select: { sizes: true },
+      }),
     ]);
 
     const available = new Set(scopeRows.flatMap((row) => row.sizes));

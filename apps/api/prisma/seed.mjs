@@ -7,9 +7,11 @@ import { PrismaClient } from "@prisma/client";
 
 const categories = [
   { key: "sweaters", label: "Свитеры", sortOrder: 1 },
-  { key: "outer", label: "Куртки", sortOrder: 2 },
+  // Метки описывают то, что в категории реально лежит: в `outer` есть пуховик,
+  // жилет и пальто, в `acc` — не только банданы, но и шарф, носки, шлейка.
+  { key: "outer", label: "Верхняя одежда", sortOrder: 2 },
   { key: "rain", label: "Дождевики", sortOrder: 3 },
-  { key: "acc", label: "Банданы", sortOrder: 4 },
+  { key: "acc", label: "Аксессуары", sortOrder: 4 },
 ];
 
 const products = [

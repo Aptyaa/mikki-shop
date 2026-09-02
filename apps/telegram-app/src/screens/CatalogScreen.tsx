@@ -97,6 +97,13 @@ export function CatalogScreen() {
     setQuery("");
   }, []);
 
+  // Сворачивание поиска чистит запрос: иначе поле спрятано, а выдача осталась
+  // отфильтрованной, и на экране ничто этого не объясняет.
+  const toggleSearch = useCallback(() => {
+    if (searchOpen) clearSearch();
+    setSearchOpen((open) => !open);
+  }, [searchOpen, clearSearch]);
+
   const resetFilters = useCallback(() => {
     setCategory(ALL.key);
     setSize(undefined);
@@ -110,7 +117,10 @@ export function CatalogScreen() {
   const total = head?.total ?? 0;
   const sizes = head?.sizes ?? [];
   const available = head?.availableSizes ?? [];
-  const unavailable = sizes.filter((value) => !available.includes(value));
+  // Выбранный размер не помечаем недоступным, даже если в новой категории его
+  // нет: `SizeSelector` рисует такие кнопки `disabled`, и снять фильтр стало бы
+  // нечем — выдача пустая, а размер не отжимается.
+  const unavailable = sizes.filter((value) => !available.includes(value) && value !== size);
   const categories = categoriesQuery.data ?? [];
   const refreshing = productsQuery.isFetching && !productsQuery.isFetchingNextPage;
 
@@ -122,7 +132,7 @@ export function CatalogScreen() {
         subtitle={head ? models(total) : undefined}
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
-            <IconButton label="Поиск" active={searchOpen} onClick={() => setSearchOpen((open) => !open)}>
+            <IconButton label="Поиск" active={searchOpen} onClick={toggleSearch}>
               <Icon name="search" />
             </IconButton>
             <IconButton label="Фильтры" onClick={() => setFiltersOpen(true)}>
