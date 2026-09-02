@@ -108,12 +108,16 @@ export function CatalogScreen() {
     });
   }, []);
 
-  const resetFilters = useCallback(() => {
-    setCategory(ALL.key);
-    setSize(undefined);
+  const clearSearch = useCallback(() => {
     setSearch("");
     setQuery("");
   }, []);
+
+  const resetFilters = useCallback(() => {
+    setCategory(ALL.key);
+    setSize(undefined);
+    clearSearch();
+  }, [clearSearch]);
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -147,6 +151,23 @@ export function CatalogScreen() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             iconLeft={<Icon name="search" size={18} />}
+            iconRight={
+              search ? (
+                // Крестик очищает сразу, не дожидаясь дебаунса: пустой запрос
+                // и так вернёт весь каталог, ждать 300 мс не за чем.
+                <button
+                  type="button"
+                  aria-label="Очистить поиск"
+                  onClick={clearSearch}
+                  style={{ display: "grid", placeItems: "center", width: "var(--tap-min)",
+                    height: "var(--tap-min)", margin: "0 calc(var(--field-pad-x) * -1) 0 0",
+                    padding: 0, border: "none", background: "none", cursor: "pointer",
+                    color: "var(--text-muted)" }}
+                >
+                  <Icon name="x" size={18} />
+                </button>
+              ) : null
+            }
           />
         </div>
       )}
