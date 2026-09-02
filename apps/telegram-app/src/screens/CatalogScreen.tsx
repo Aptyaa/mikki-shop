@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   AppBar,
   Band,
@@ -16,12 +17,7 @@ import {
   SizeSelector,
   Skeleton,
 } from "@mikki-shop/ui";
-import type {
-  CatalogCategory,
-  CatalogResponse,
-  CatalogSize,
-  CatalogSort,
-} from "@mikki-shop/shared-types";
+import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
 import { plural } from "../lib/plural";
 
@@ -53,7 +49,6 @@ function SkeletonGrid() {
 
 /** Каталог: главный экран Mini App. Раскладка повторяет ui_kits/telegram дизайн-системы. */
 export function CatalogScreen() {
-  const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [category, setCategory] = useState(ALL.key);
   const [size, setSize] = useState<CatalogSize | undefined>(undefined);
   const [sort, setSort] = useState<CatalogSort>("pop");
@@ -62,42 +57,31 @@ export function CatalogScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [favourites, setFavourites] = useState<ReadonlySet<string>>(new Set<string>());
-  const [data, setData] = useState<CatalogResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    // Ошибку здесь не показываем отдельно: если API недоступен, об этом
-    // скажет запрос товаров — два сообщения об одном сбое ни о чём не говорят.
-    fetchCategories(controller.signal)
-      .then(setCategories)
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, [attempt]);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search.trim()), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    fetchProducts({ category, size, sort, q: query }, controller.signal)
-      .then((response) => {
-        setData(response);
-        setFailed(false);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [category, size, sort, query, attempt]);
+  // Ошибку категорий отдельно не показываем: если API недоступен, об этом
+  // скажет запрос товаров — два сообщения об одном сбое ни о чём не говорят.
+  const categoriesQuery = useQuery({
+    queryKey: ["catalog", "categories"],
+    queryFn: ({ signal }) => fetchCategories(signal),
+  });
+
+  const productsQuery = useInfiniteQuery({
+    queryKey: ["catalog", "products", { category, size, sort, q: query }],
+    queryFn: ({ pageParam, signal }) =>
+      fetchProducts({ category, size, sort, q: query, offset: pageParam }, signal),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const loaded = last.offset + last.items.length;
+      return loaded < last.matched ? loaded : undefined;
+    },
+    // Смена фильтра не роняет список в скелет: старая выдача гаснет и заменяется.
+    placeholderData: keepPreviousData,
+  });
 
   const toggleFavourite = useCallback((id: string) => {
     setFavourites((current) => {
@@ -119,18 +103,23 @@ export function CatalogScreen() {
     clearSearch();
   }, [clearSearch]);
 
-  const items = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const sizes = data?.sizes ?? [];
-  const available = data?.availableSizes ?? [];
+  const pages = productsQuery.data?.pages ?? [];
+  const head = pages[0];
+  const items = pages.flatMap((page) => page.items);
+  const matched = head?.matched ?? 0;
+  const total = head?.total ?? 0;
+  const sizes = head?.sizes ?? [];
+  const available = head?.availableSizes ?? [];
   const unavailable = sizes.filter((value) => !available.includes(value));
+  const categories = categoriesQuery.data ?? [];
+  const refreshing = productsQuery.isFetching && !productsQuery.isFetchingNextPage;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
       <AppBar
         title="Каталог"
-        subtitle={data ? models(total) : undefined}
+        subtitle={head ? models(total) : undefined}
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
             <IconButton label="Поиск" active={searchOpen} onClick={() => setSearchOpen((open) => !open)}>
@@ -193,16 +182,16 @@ export function CatalogScreen() {
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
         padding: "var(--sp-5) var(--gutter) var(--safe-scroll-bottom)" }}>
-        {failed ? (
+        {productsQuery.isError ? (
           <Notice tone="danger" title="Каталог не загрузился">
             Проверьте соединение и попробуйте снова.
             <div style={{ marginTop: "var(--sp-4)" }}>
-              <Button variant="outline" size="sm" onClick={() => setAttempt((value) => value + 1)}>
+              <Button variant="outline" size="sm" onClick={() => productsQuery.refetch()}>
                 Повторить
               </Button>
             </div>
           </Notice>
-        ) : loading && !data ? (
+        ) : productsQuery.isPending ? (
           <SkeletonGrid />
         ) : items.length === 0 ? (
           <EmptyState
@@ -214,7 +203,7 @@ export function CatalogScreen() {
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
               columnGap: "var(--grid-gap)", rowGap: "var(--grid-gap-row)",
-              opacity: loading ? 0.6 : 1, transition: "opacity var(--dur-fast) var(--ease-out)" }}>
+              opacity: refreshing ? 0.6 : 1, transition: "opacity var(--dur-fast) var(--ease-out)" }}>
               {items.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -235,9 +224,22 @@ export function CatalogScreen() {
                 />
               ))}
             </div>
+
             <Band tone="paper" align="center" style={{ marginTop: "var(--sp-7)" }}>
-              <span>Показано {items.length} из {total}</span>
+              <span>Показано {items.length} из {matched}</span>
             </Band>
+
+            {productsQuery.hasNextPage && (
+              <Button
+                block
+                variant="outline"
+                loading={productsQuery.isFetchingNextPage}
+                onClick={() => productsQuery.fetchNextPage()}
+                style={{ marginTop: "var(--sp-5)" }}
+              >
+                Показать ещё {Math.min(head?.limit ?? 0, matched - items.length)}
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -248,7 +250,7 @@ export function CatalogScreen() {
         onClose={() => setFiltersOpen(false)}
         footer={
           <Button block onClick={() => setFiltersOpen(false)}>
-            Показать {models(items.length)}
+            Показать {models(matched)}
           </Button>
         }
       >
