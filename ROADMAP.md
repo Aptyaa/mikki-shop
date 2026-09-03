@@ -11,6 +11,7 @@
 - [x] CI (`.github/workflows/ci.yml`): lint + typecheck + test + build на каждый push/PR
 - [x] `README.md` с шагами локального запуска
 - [x] Тестовый раннер (Vitest) и тесты каталога — логика и экран; см. `docs/features/004-test-suite.md` и `005-catalog-screen-tests.md`
+- [x] Рантайм поднят с Node 20 (EOL в апреле 2026) на Node 22 — CI, оба Dockerfile, `engines`
 
 ## Фаза 1 — MVP-каталог в Telegram
 Бот + Mini App: каталог товаров, карточка товара, корзина, оформление заказа без онлайн-оплаты (заявка менеджеру). Цель — быстро проверить спрос.
