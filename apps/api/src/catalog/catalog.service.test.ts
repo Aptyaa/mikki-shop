@@ -6,6 +6,15 @@ import { describe, expect, it, vi } from "vitest";
 import { CatalogService } from "./catalog.service";
 import type { PrismaService } from "../prisma/prisma.service";
 
+/** Строка размера товара в том виде, в каком её отдаёт Prisma. */
+type SizeRow = {
+  size: string;
+  quantity: number;
+  chestCm: string | null;
+  neckCm: string | null;
+  backCm: string | null;
+};
+
 /** Строка товара в том виде, в каком её отдаёт Prisma. */
 type Row = {
   id: string;
@@ -15,13 +24,25 @@ type Row = {
   wasPrice: number | null;
   tag: string | null;
   tagTone: string | null;
-  sizes: string[];
+  sizes: SizeRow[];
   soldOut: boolean;
   stockNote: string | null;
   createdAt: Date;
   popularity: number;
-  category: { key: string };
+  category: { key: string; label: string };
+  description: string | null;
+  composition: string | null;
+  care: string | null;
+  rating: number | null;
+  reviewCount: number;
+  photos: string[];
+  colors: { name: string; hex: string }[];
 };
+
+/** Размер в наличии, с мерками — как их кладёт сид. */
+function size(name: string, over: Partial<SizeRow> = {}): SizeRow {
+  return { size: name, quantity: 6, chestCm: "34–40", neckCm: "22–26", backCm: "24–28", ...over };
+}
 
 function row(over: Partial<Row> = {}): Row {
   return {
@@ -32,12 +53,19 @@ function row(over: Partial<Row> = {}): Row {
     wasPrice: null,
     tag: null,
     tagTone: null,
-    sizes: ["S", "M"],
+    sizes: [size("S"), size("M")],
     soldOut: false,
     stockNote: null,
     createdAt: new Date("2026-08-01T00:00:00Z"),
     popularity: 10,
-    category: { key: "sweaters" },
+    category: { key: "sweaters", label: "Свитеры" },
+    description: null,
+    composition: null,
+    care: null,
+    rating: null,
+    reviewCount: 0,
+    photos: [],
+    colors: [],
     ...over,
   };
 }
@@ -45,24 +73,31 @@ function row(over: Partial<Row> = {}): Row {
 type Args = Record<string, unknown>;
 
 /**
- * Подставной Prisma. Сервис в одном `Promise.all` делает два `findMany`:
- * страницу выдачи (с `include`) и фасет размеров (с `select`) — их и
- * различаем. `count` вызывается с `where` для «подошло под фильтр» и без
+ * Подставной Prisma. Страница выдачи приходит из `product.findMany`, фасет
+ * размеров — из `productSize.findMany` (отдельная таблица, `distinct` по
+ * размеру). `count` вызывается с `where` для «подошло под фильтр» и без
  * аргументов для «всего в каталоге».
  */
-function makePrisma(options: { rows?: Row[]; facet?: { sizes: string[] }[] } = {}) {
+function makePrisma(options: { rows?: Row[]; facet?: { size: string }[] } = {}) {
   const rows = options.rows ?? [row()];
-  const facet = options.facet ?? [{ sizes: ["S", "M"] }];
+  const facet = options.facet ?? [{ size: "S" }, { size: "M" }];
 
-  const findMany = vi.fn(async (args: Args) => (args.select ? facet : rows));
+  const findMany = vi.fn(async (_args: Args) => rows);
+  const findUnique = vi.fn(async (_args: Args) => rows[0] ?? null);
   const count = vi.fn(async (args?: Args) => (args?.where ? 7 : 28));
+  const facetFindMany = vi.fn(async (_args: Args) => facet);
 
   return {
-    service: new CatalogService({ product: { findMany, count } } as unknown as PrismaService),
+    service: new CatalogService({
+      product: { findMany, findUnique, count },
+      productSize: { findMany: facetFindMany },
+    } as unknown as PrismaService),
     /** Аргументы запроса страницы выдачи. */
-    page: () => findMany.mock.calls.find((call) => !call[0].select)?.[0] as Args,
+    page: () => findMany.mock.calls.at(-1)?.[0] as Args,
     /** Аргументы запроса фасета размеров. */
-    facetQuery: () => findMany.mock.calls.find((call) => call[0].select)?.[0] as Args,
+    facetQuery: () => facetFindMany.mock.calls.at(-1)?.[0] as Args,
+    /** Аргументы запроса карточки товара. */
+    card: () => findUnique.mock.calls.at(-1)?.[0] as Args,
   };
 }
 
@@ -136,11 +171,25 @@ describe("CatalogService.products — фильтры", () => {
     });
   });
 
-  it("фильтрует выдачу по размеру", async () => {
+  // Фасет предлагает только размеры, по которым есть остаток; выдача обязана
+  // отвечать тем же, иначе выбор размера в шите даёт товары, которых нет.
+  it("фильтрует выдачу по размеру, у которого есть остаток", async () => {
     const { service, page } = makePrisma();
     await service.products({ size: "M" });
 
-    expect(page().where).toMatchObject({ sizes: { has: "M" } });
+    expect(page().where).toMatchObject({
+      soldOut: false,
+      sizes: { some: { size: "M", quantity: { gt: 0 } } },
+    });
+  });
+
+  // Без фильтра по размеру распроданные товары из выдачи не выкидываются:
+  // в сетке они честно помечены «нет в наличии».
+  it("без фильтра по размеру не отсеивает распроданные", async () => {
+    const { service, page } = makePrisma();
+    await service.products({ category: "rain" });
+
+    expect(page().where).not.toHaveProperty("soldOut");
   });
 });
 
@@ -152,19 +201,22 @@ describe("CatalogService.products — фасет размеров", () => {
     const { service, facetQuery } = makePrisma();
     await service.products({ category: "rain", size: "M" });
 
-    expect(facetQuery().where).toMatchObject({ category: { key: "rain" } });
-    expect(facetQuery().where).not.toHaveProperty("sizes");
+    expect(facetQuery().where).toMatchObject({ product: { category: { key: "rain" } } });
+    expect(facetQuery().where).not.toHaveProperty("size");
   });
 
-  it("не считает доступными размеры распроданных товаров", async () => {
+  it("не считает доступными ни размеры распроданных товаров, ни нулевые остатки", async () => {
     const { service, facetQuery } = makePrisma();
     await service.products({});
 
-    expect(facetQuery().where).toMatchObject({ soldOut: false });
+    expect(facetQuery().where).toMatchObject({
+      quantity: { gt: 0 },
+      product: { soldOut: false },
+    });
   });
 
   it("отдаёт всю сетку и доступную часть в порядке сетки", async () => {
-    const { service } = makePrisma({ facet: [{ sizes: ["L"] }, { sizes: ["XS", "L"] }] });
+    const { service } = makePrisma({ facet: [{ size: "L" }, { size: "XS" }] });
     const result = await service.products({});
 
     expect(result.sizes).toEqual(["XS", "S", "M", "L", "XL"]);
@@ -223,10 +275,109 @@ describe("CatalogService.products — карточка товара", () => {
   });
 
   it("отбрасывает размеры вне сетки магазина", async () => {
-    const { service } = makePrisma({ rows: [row({ sizes: ["S", "XXL", "M"] })] });
+    const { service } = makePrisma({ rows: [row({ sizes: [size("S"), size("XXL"), size("M")] })] });
     const [item] = (await service.products({})).items;
 
     expect(item?.sizes).toEqual(["S", "M"]);
+  });
+
+  // В базе размер — строка, и `ORDER BY size` дал бы L, M, S, XL, XS.
+  it("отдаёт размеры в порядке сетки, а не в порядке строк из базы", async () => {
+    const { service } = makePrisma({ rows: [row({ sizes: [size("L"), size("XS"), size("M")] })] });
+    const [item] = (await service.products({})).items;
+
+    expect(item?.sizes).toEqual(["XS", "M", "L"]);
+  });
+});
+
+describe("CatalogService.product — карточка товара", () => {
+  it("ищет товар по слагу", async () => {
+    const { service, card } = makePrisma();
+    await service.product("sweater-kosa");
+
+    expect(card()).toMatchObject({ where: { slug: "sweater-kosa" } });
+  });
+
+  it("на неизвестный слаг отдаёт null, а не пустую карточку", async () => {
+    const { service } = makePrisma({ rows: [] });
+
+    await expect(service.product("нет-такого")).resolves.toBeNull();
+  });
+
+  it("добавляет к плитке всё, что нужно карточке", async () => {
+    const { service } = makePrisma({
+      rows: [
+        row({
+          description: "Плотная вязка в две нити.",
+          composition: "меринос 70%, акрил 30%",
+          care: "Стирка при 30°.",
+          rating: 4.8,
+          reviewCount: 126,
+          colors: [{ name: "Сливочный", hex: "#FBF3E4" }],
+        }),
+      ],
+    });
+    const card = await service.product("sweater-kosa");
+
+    expect(card).toMatchObject({
+      slug: "sweater-kosa",
+      categoryLabel: "Свитеры",
+      description: "Плотная вязка в две нити.",
+      composition: "меринос 70%, акрил 30%",
+      care: "Стирка при 30°.",
+      rating: 4.8,
+      reviewCount: 126,
+      photos: [],
+      colors: [{ name: "Сливочный", hex: "#FBF3E4" }],
+    });
+  });
+
+  it("не выдумывает необязательные поля карточки", async () => {
+    const { service } = makePrisma();
+    const card = await service.product("sweater-kosa");
+
+    expect(card).not.toHaveProperty("description");
+    expect(card).not.toHaveProperty("composition");
+    expect(card).not.toHaveProperty("care");
+    expect(card).not.toHaveProperty("rating");
+    // Отзывов может не быть, но число — не «необязательное поле»: ноль честнее.
+    expect(card).toMatchObject({ reviewCount: 0 });
+  });
+
+  it("собирает сетку с наличием и мерками в порядке сетки магазина", async () => {
+    const { service } = makePrisma({
+      rows: [
+        row({
+          sizes: [
+            size("M", { quantity: 0, chestCm: "40–46", neckCm: "26–30", backCm: "28–33" }),
+            size("XS", { quantity: 4, chestCm: "28–34", neckCm: "18–22", backCm: "20–24" }),
+          ],
+        }),
+      ],
+    });
+    const card = await service.product("sweater-kosa");
+
+    expect(card?.sizeRows).toEqual([
+      { size: "XS", available: true, chest: "28–34", neck: "18–22", back: "20–24" },
+      { size: "M", available: false, chest: "40–46", neck: "26–30", back: "28–33" },
+    ]);
+  });
+
+  it("не заполняет мерки, которых нет в базе", async () => {
+    const { service } = makePrisma({
+      rows: [row({ sizes: [size("S", { chestCm: null, neckCm: null, backCm: null })] })] });
+    const [first] = (await service.product("sweater-kosa"))?.sizeRows ?? [];
+
+    expect(first).toEqual({ size: "S", available: true });
+  });
+
+  // Товар снимают с продажи флагом, а не обнулением остатков по строкам:
+  // если сетку не проверять на этот флаг, размеры остались бы кликабельными.
+  it("у распроданного товара недоступны все размеры, даже с остатком", async () => {
+    const { service } = makePrisma({ rows: [row({ soldOut: true })] });
+    const card = await service.product("sweater-kosa");
+
+    expect(card?.sizeRows.every((sizeRow) => !sizeRow.available)).toBe(true);
   });
 });
 

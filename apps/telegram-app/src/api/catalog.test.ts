@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogResponse } from "@mikki-shop/shared-types";
-import { fetchCategories, fetchProducts } from "./catalog";
+import { HttpError, fetchCategories, fetchProduct, fetchProducts } from "./catalog";
 
 const PAGE: CatalogResponse = {
   items: [],
@@ -105,5 +105,29 @@ describe("fetchCategories", () => {
   it("на не-2xx бросает ошибку с путём и кодом", async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
     await expect(fetchCategories()).rejects.toThrow("/catalog/categories: HTTP 500");
+  });
+});
+
+describe("fetchProduct", () => {
+  it("ходит за карточкой по слагу", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    await fetchProduct("sviter-saharok");
+    expect(requestedUrl()).toBe("/catalog/products/sviter-saharok");
+  });
+
+  // Слаг приходит из адресной строки: без кодирования кириллица или слэш в нём
+  // ушли бы в путь как есть и увели запрос не туда.
+  it("кодирует слаг в пути", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    await fetchProduct("свитер/сахарок");
+    expect(requestedUrl()).toBe("/catalog/products/%D1%81%D0%B2%D0%B8%D1%82%D0%B5%D1%80%2F%D1%81%D0%B0%D1%85%D0%B0%D1%80%D0%BE%D0%BA");
+  });
+
+  // Экран товара по коду отличает «такого товара нет» от обрыва связи, поэтому
+  // код обязан доезжать до него, а не теряться в тексте ошибки.
+  it("на 404 бросает HttpError с кодом", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    await expect(fetchProduct("net")).rejects.toBeInstanceOf(HttpError);
+    await expect(fetchProduct("net")).rejects.toMatchObject({ status: 404 });
   });
 });

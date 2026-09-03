@@ -3,8 +3,10 @@ import { PhotoSlot } from "./PhotoSlot";
 import { PriceBlock } from "./PriceBlock";
 import { QuantityStepper } from "./QuantityStepper";
 
-/** One row in the cart: photo, title, variant, quantity, price. */
-export function CartLine({title,variant,price,image,qty=1,onQty,onRemove,style,...rest}){
+/** One row in the cart: photo, title, variant, quantity, price.
+ *  `maxQty` caps the stepper at what is actually in stock; at 0 the stepper is
+ *  dropped entirely — there is nothing to pick, the row can only be removed. */
+export function CartLine({title,variant,price,image,qty=1,maxQty=99,onQty,onRemove,style,...rest}){
   return (
     <div style={{display:"flex",gap:"var(--sp-4)",padding:"var(--sp-4) 0",alignItems:"flex-start",...style}} {...rest}>
       <PhotoSlot src={image} alt={title} ratio="1 / 1" style={{width:76,flexShrink:0}}/>
@@ -18,8 +20,10 @@ export function CartLine({title,variant,price,image,qty=1,onQty,onRemove,style,.
         </div>
         {variant&&<span style={{fontSize:"var(--fs-caption)",color:"var(--text-muted)"}}>{variant}</span>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"var(--sp-2)"}}>
-          <QuantityStepper value={qty} onChange={onQty} size="sm"/>
-          <PriceBlock price={price*qty} size="sm"/>
+          {maxQty>0
+            ? <QuantityStepper value={qty} max={maxQty} onChange={onQty} size="sm"/>
+            : <span/>}
+          <PriceBlock price={price*Math.min(qty,maxQty)} size="sm"/>
         </div>
       </div>
     </div>

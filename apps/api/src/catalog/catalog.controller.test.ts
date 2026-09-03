@@ -4,7 +4,7 @@
 // чтобы модуль вообще загрузился.
 import "reflect-metadata";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CatalogQuery, CatalogResponse } from "@mikki-shop/shared-types";
+import type { CatalogQuery, CatalogResponse, ProductDetail } from "@mikki-shop/shared-types";
 import { CatalogController } from "./catalog.controller";
 import type { CatalogService } from "./catalog.service";
 
@@ -27,14 +27,35 @@ type Params = {
   offset?: string;
 };
 
+const CARD: ProductDetail = {
+  id: "p1",
+  slug: "sviter-saharok",
+  category: "sweaters",
+  categoryLabel: "Свитеры",
+  title: "Вязаный свитер «Сахарок»",
+  price: 1490,
+  sizes: ["S"],
+  soldOut: false,
+  reviewCount: 0,
+  photos: [],
+  colors: [],
+  sizeRows: [{ size: "S", available: true }],
+};
+
 let products: ReturnType<typeof vi.fn>;
 let categories: ReturnType<typeof vi.fn>;
+let product: ReturnType<typeof vi.fn>;
 let controller: CatalogController;
 
 beforeEach(() => {
   products = vi.fn().mockResolvedValue(EMPTY);
   categories = vi.fn().mockResolvedValue([]);
-  controller = new CatalogController({ products, categories } as unknown as CatalogService);
+  product = vi.fn().mockResolvedValue(CARD);
+  controller = new CatalogController({
+    products,
+    categories,
+    product,
+  } as unknown as CatalogService);
 });
 
 /** Запрос, с которым контроллер сходил в сервис после разбора query. */
@@ -133,5 +154,20 @@ describe("CatalogController.categories", () => {
     const rows = [{ key: "rain", label: "Дождевики", count: 5 }];
     categories.mockResolvedValue(rows);
     await expect(controller.categories()).resolves.toEqual(rows);
+  });
+});
+
+describe("CatalogController.product — карточка товара", () => {
+  it("отдаёт карточку сервиса без изменений", async () => {
+    await expect(controller.product("sviter-saharok")).resolves.toEqual(CARD);
+    expect(product).toHaveBeenCalledWith("sviter-saharok");
+  });
+
+  // Пустая карточка выглядела бы как товар без описания, а не как отсутствие
+  // товара: по 404 фронт рисует «Товара нет» и дорогу назад в каталог.
+  it("превращает отсутствие товара в 404", async () => {
+    product.mockResolvedValue(null);
+
+    await expect(controller.product("нет-такого")).rejects.toMatchObject({ status: 404 });
   });
 });
