@@ -13,3 +13,6 @@ apps/api/prisma/generated/
 # Vite
 apps/*/dist/
 apps/*/.vite/
+
+# pnpm/node
+node-compile-cache/

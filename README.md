@@ -38,6 +38,8 @@ pnpm --filter telegram-app dev # http://127.0.0.1:5173
 pnpm run build       # собрать все пакеты/приложения
 pnpm run typecheck   # tsc --noEmit по всем пакетам
 pnpm run lint        # oxlint по дизайн-контракту (packages/ui, apps/telegram-app)
+pnpm run test        # Vitest по всему монорепо (без БД и без браузера)
+pnpm run test:watch  # то же в watch-режиме
 pnpm --filter api migrate   # прогнать новые Prisma-миграции
 ```
 
