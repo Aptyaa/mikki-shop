@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
 import type { CartItemInput, CartPreview, CatalogSize } from "@mikki-shop/shared-types";
+import { Public } from "../auth/public.decorator";
 import { CATALOG_SIZES } from "../catalog/catalog.constants";
 import { CartService } from "./cart.service";
 import { CART_LINE_MAX, CART_MAX_ITEMS } from "./cart.constants";
@@ -41,6 +42,7 @@ function toItem(raw: unknown): CartItemInput | null {
 }
 
 /** Корзина. Как и каталог, читается без авторизации: она живёт в браузере. */
+@Public()
 @Controller("cart")
 export class CartController {
   constructor(private readonly cart: CartService) {}

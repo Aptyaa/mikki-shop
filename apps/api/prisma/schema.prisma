@@ -9,10 +9,27 @@ datasource db {
   extensions = [postgis]
 }
 
+/// Покупатель. Заводится сам при первом входе из Mini App — регистрации в
+/// магазине нет и не будет: Telegram уже знает, кто это.
 model User {
-  id         String   @id @default(uuid())
-  telegramId String   @unique
-  createdAt  DateTime @default(now())
+  id           String   @id @default(uuid())
+  /// Идентификатор в Telegram. Строкой, а не числом: он давно вырос за пределы
+  /// int32, а арифметики по нему всё равно нет.
+  telegramId   String   @unique
+  /// Профиль из `initData`. Всё необязательное: username может быть не задан,
+  /// фамилия и фото — тем более, а язык приходит не всегда.
+  username     String?
+  firstName    String?
+  lastName     String?
+  photoUrl     String?
+  languageCode String?
+  isPremium    Boolean  @default(false)
+  /// Источник перехода из `start_param` deep-link (см. «Аналитика воронки» в
+  /// ARCHITECTURE.md). Пишется один раз, при первом входе: иначе переход по
+  /// чужой ссылке переписал бы источник, который реально привёл покупателя.
+  utmSource    String?
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
 }
 
 model Category {

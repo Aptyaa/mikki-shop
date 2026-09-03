@@ -162,3 +162,23 @@ export interface CartPreview {
   /** Есть ли строки, где выбранного количества нет в наличии. */
   hasShortage: boolean;
 }
+
+/** Покупатель — то, что фронт знает о вошедшем пользователе. */
+export interface AuthUser {
+  id: string;
+  telegramId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  photoUrl?: string;
+  isPremium: boolean;
+}
+
+/** Ответ на вход: токен и профиль. */
+export interface AuthSession {
+  /** JWT для заголовка `Authorization: Bearer`. */
+  token: string;
+  /** Когда токен истекает — миллисекунды эпохи. */
+  expiresAt: number;
+  user: AuthUser;
+}

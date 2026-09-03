@@ -1,4 +1,5 @@
 import type {
+  AuthSession,
   CartItemInput,
   CartPreview,
   CatalogCategory,
@@ -6,10 +7,23 @@ import type {
   CatalogResponse,
   ProductDetail,
 } from "@mikki-shop/shared-types";
+import { bearerToken, useAuth } from "../lib/auth";
 
 // Пусто при сборке без переменной — тогда запрос уйдёт на тот же origin,
 // что и приложение. Значение задаётся в корневом .env (VITE_API_URL).
 const BASE_URL: string = import.meta.env.VITE_API_URL ?? "";
+
+/**
+ * Заголовки запроса. Токен подставляется, только если он есть и не истёк:
+ * каталог и корзина публичные, и гостю они отвечают тем же.
+ */
+function headers(extra?: Record<string, string>): Record<string, string> {
+  const token = bearerToken();
+  return {
+    ...extra,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 /**
  * Ошибка запроса с кодом ответа.
@@ -27,9 +41,22 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Сервер не принял токен.
+ *
+ * Годность токена на клиенте меряется только его же `expiresAt`, а сервер
+ * может отказать раньше: сменился `JWT_SECRET`, пропала строка покупателя.
+ * Без сброса сессия залипла бы мёртвой до конца месячного срока, хотя
+ * `initData` для нового входа под рукой на каждом старте.
+ */
+function forgetSessionOn(status: number): void {
+  if (status === 401) useAuth.getState().signOut();
+}
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, { signal });
+  const response = await fetch(`${BASE_URL}${path}`, { headers: headers(), signal });
   if (!response.ok) {
+    forgetSessionOn(response.status);
     throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
   }
   return (await response.json()) as T;
@@ -38,11 +65,12 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: headers({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
     ...(signal ? { signal } : {}),
   });
   if (!response.ok) {
+    forgetSessionOn(response.status);
     throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
   }
   return (await response.json()) as T;
@@ -78,4 +106,9 @@ export function fetchCartPreview(
   signal?: AbortSignal,
 ): Promise<CartPreview> {
   return post<CartPreview>("/cart/preview", { items }, signal);
+}
+
+/** Обмен `initData` из Mini App на токен покупателя. */
+export function login(initData: string, signal?: AbortSignal): Promise<AuthSession> {
+  return post<AuthSession>("/auth/telegram", { initData }, signal);
 }
