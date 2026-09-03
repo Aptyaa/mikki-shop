@@ -11,9 +11,12 @@
     "dev:telegram-app": "pnpm --filter telegram-app dev",
     "build": "pnpm --filter shared-types build && pnpm --filter ui build && pnpm -r --filter=./apps/* build",
     "lint": "oxlint --config _adherence.oxlintrc.json packages/ui/src apps/telegram-app/src",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "oxlint": "^1.16.0"
+    "oxlint": "^1.16.0",
+    "vitest": "^3.2.7"
   }
 }
