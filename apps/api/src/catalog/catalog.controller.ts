@@ -6,6 +6,7 @@ import type {
   CatalogSort,
   ProductDetail,
 } from "@mikki-shop/shared-types";
+import { Public } from "../auth/public.decorator";
 import { CatalogService } from "./catalog.service";
 import {
   CATALOG_PAGE_SIZE,
@@ -22,6 +23,7 @@ function toInt(value: string | undefined, fallback: number, max: number): number
 }
 
 /** Публичный каталог: читается без авторизации, так и задумано. */
+@Public()
 @Controller("catalog")
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}

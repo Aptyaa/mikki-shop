@@ -1,30 +1,10 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
+import { ScreenLayer } from "./components/ScreenLayer";
 import { useRoute } from "./lib/route";
+import { useSession } from "./lib/session";
 import { CartScreen } from "./screens/CartScreen";
 import { CatalogScreen } from "./screens/CatalogScreen";
 import { ProductScreen } from "./screens/ProductScreen";
-
-/**
- * Спрятанный слой экрана.
- *
- * `visibility`, а не `display: none`: у скрытого через `display` элемента
- * браузер выбрасывает бокс прокрутки, и экран возвращался бы к началу.
- * `position: fixed` при этом убирает его из потока, чтобы верхний экран
- * занимал вьюпорт целиком.
- */
-const HIDDEN = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100%",
-  visibility: "hidden",
-  pointerEvents: "none",
-} as const;
-
-function Layer({ hidden, children }: { hidden: boolean; children: ReactNode }) {
-  return <div style={hidden ? HIDDEN : undefined}>{children}</div>;
-}
 
 /**
  * Каталог и карточка не размонтируются, пока открыт другой экран: иначе
@@ -35,26 +15,28 @@ function Layer({ hidden, children }: { hidden: boolean; children: ReactNode }) {
  * Корзина размонтируется свободно: всё её состояние живёт в сторе.
  */
 export function App() {
+  useSession();
+
   const route = useRoute();
   const slug = route.name === "product" ? route.slug : undefined;
 
-  // Последний открытый товар, чтобы карточку было что показывать под корзиной.
+  // Последний открытый товар, чтобы карточке было что показывать под корзиной.
   const [lastSlug, setLastSlug] = useState(slug);
   if (slug !== undefined && slug !== lastSlug) setLastSlug(slug);
 
   return (
     <>
-      <Layer hidden={route.name !== "catalog"}>
+      <ScreenLayer hidden={route.name !== "catalog"}>
         <CatalogScreen />
-      </Layer>
+      </ScreenLayer>
 
       {/* `key` по слагу: переход с карточки на похожий товар — это новый экран,
           а не тот же с другими данными; иначе на нём остались бы выбранный
           размер, расцветка и прокрутка от предыдущего товара. */}
       {lastSlug !== undefined && (
-        <Layer hidden={route.name !== "product"}>
+        <ScreenLayer hidden={route.name !== "product"}>
           <ProductScreen key={lastSlug} slug={lastSlug} />
-        </Layer>
+        </ScreenLayer>
       )}
 
       {route.name === "cart" && <CartScreen />}
