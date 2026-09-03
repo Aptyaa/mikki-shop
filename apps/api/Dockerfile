@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN apk add --no-cache openssl
 RUN npm install -g pnpm@9.15.9
 WORKDIR /repo
@@ -18,7 +18,7 @@ RUN pnpm --filter api exec prisma generate
 RUN pnpm --filter api build
 RUN pnpm install --prod --frozen-lockfile --filter api... --ignore-scripts
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 RUN addgroup -S app && adduser -S app -G app

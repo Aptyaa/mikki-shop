@@ -8,7 +8,7 @@ TS-монорепо на pnpm workspaces: NestJS + Prisma + PostgreSQL/PostGIS +
 
 ## Быстрый старт
 
-Требуется: Node ≥20, pnpm, Docker.
+Требуется: Node ≥22, pnpm, Docker.
 
 ```bash
 pnpm install
