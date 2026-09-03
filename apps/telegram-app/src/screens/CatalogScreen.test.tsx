@@ -275,3 +275,28 @@ describe("CatalogScreen — поиск", () => {
     await waitFor(() => expect(lastQuery().q).toBe(""));
   });
 });
+
+describe("CatalogScreen — переход в карточку", () => {
+  it("по клику на плитку открывает товар по его слагу", () => {
+    window.location.hash = "";
+    serve(catalogOf(3));
+    renderScreen();
+
+    return waitFor(() => screen.getByText("Товар 1")).then(() => {
+      fireEvent.click(screen.getByText("Товар 1"));
+      expect(window.location.hash).toBe("#/product/product-1");
+    });
+  });
+
+  // Сердечко живёт поверх плитки и не должно утаскивать в карточку по дороге.
+  it("клик по сердечку не открывает карточку", async () => {
+    window.location.hash = "";
+    serve(catalogOf(3));
+    renderScreen();
+    await waitFor(() => screen.getByText("Товар 1"));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "В избранное" })[0]!);
+
+    expect(window.location.hash).toBe("");
+  });
+});

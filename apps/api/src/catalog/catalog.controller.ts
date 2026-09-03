@@ -1,9 +1,10 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, NotFoundException, Param, Query } from "@nestjs/common";
 import type {
   CatalogCategory,
   CatalogResponse,
   CatalogSize,
   CatalogSort,
+  ProductDetail,
 } from "@mikki-shop/shared-types";
 import { CatalogService } from "./catalog.service";
 import {
@@ -54,5 +55,14 @@ export class CatalogController {
       limit: Math.max(1, toInt(limit, CATALOG_PAGE_SIZE, CATALOG_PAGE_SIZE_MAX)),
       offset: toInt(offset, 0, Number.MAX_SAFE_INTEGER),
     });
+  }
+
+  @Get("products/:slug")
+  async product(@Param("slug") slug: string): Promise<ProductDetail> {
+    const product = await this.catalog.product(slug);
+    // Пустая карточка выглядела бы как товар без описания, поэтому именно 404:
+    // фронт по нему рисует «Товара нет» и кнопку назад в каталог.
+    if (!product) throw new NotFoundException(`Товар «${slug}» не найден`);
+    return product;
   }
 }

@@ -6,6 +6,8 @@ import type {
   CatalogQuery,
   CatalogResponse,
   CatalogSize,
+  ProductDetail,
+  ProductSizeRow,
   TagTone,
 } from "@mikki-shop/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
@@ -17,10 +19,32 @@ const SORT_ORDER: Record<string, Prisma.ProductOrderByWithRelationInput[]> = {
   cheap: [{ price: "asc" }],
 };
 
-type ProductRow = Prisma.ProductGetPayload<{ include: { category: true } }>;
+/** Что нужно, чтобы собрать плитку каталога. */
+const TILE = { category: true, sizes: true } as const;
+
+/** Плюс то, что нужно только карточке товара. */
+const CARD = {
+  ...TILE,
+  colors: { orderBy: { sortOrder: "asc" } },
+} as const satisfies Prisma.ProductInclude;
+
+type ProductRow = Prisma.ProductGetPayload<{ include: typeof TILE }>;
+type ProductCardRow = Prisma.ProductGetPayload<{ include: typeof CARD }>;
 
 function isSize(value: string): value is CatalogSize {
   return (CATALOG_SIZES as readonly string[]).includes(value);
+}
+
+/**
+ * Размеры товара в порядке сетки магазина.
+ *
+ * Порядок задаётся здесь, а не в `ORDER BY`: в базе размер — строка, и
+ * сортировка по ней дала бы L, M, S, XL, XS. Заодно отсеиваются размеры,
+ * которых в сетке магазина нет.
+ */
+function gridSizes(rows: { size: string }[]): CatalogSize[] {
+  const present = new Set(rows.map((row) => row.size));
+  return CATALOG_SIZES.filter((size) => present.has(size));
 }
 
 function toDto(row: ProductRow): CatalogProduct {
@@ -35,10 +59,29 @@ function toDto(row: ProductRow): CatalogProduct {
     ...(row.tagTone && (TAG_TONES as readonly string[]).includes(row.tagTone)
       ? { tagTone: row.tagTone as TagTone }
       : {}),
-    sizes: row.sizes.filter(isSize),
+    sizes: gridSizes(row.sizes),
     soldOut: row.soldOut,
     ...(row.stockNote ? { stockNote: row.stockNote } : {}),
   };
+}
+
+/** Сетка товара с наличием и мерками — то, чем карточка отличается от плитки. */
+function toSizeRows(row: ProductCardRow): ProductSizeRow[] {
+  return CATALOG_SIZES.flatMap((size) => {
+    const found = row.sizes.find((candidate) => candidate.size === size);
+    if (!found) return [];
+    return [
+      {
+        size,
+        // Товар, снятый с продажи целиком, не оставляет доступных размеров,
+        // даже если остатки по строкам не обнулены.
+        available: !row.soldOut && found.quantity > 0,
+        ...(found.chestCm ? { chest: found.chestCm } : {}),
+        ...(found.neckCm ? { neck: found.neckCm } : {}),
+        ...(found.backCm ? { back: found.backCm } : {}),
+      },
+    ];
+  });
 }
 
 @Injectable()
@@ -69,9 +112,15 @@ export class CatalogService {
       ...(query.q ? { title: { contains: query.q, mode: "insensitive" } } : {}),
     };
 
+    // Размер считается подходящим, только если по нему есть что отгрузить.
+    // Условия те же, что у фасета ниже, включая `soldOut`: фасет предлагает
+    // размер, потому что где-то он есть, — и выдача по нему не должна
+    // приносить товар, снятый с продажи флагом при ненулевых остатках.
     const where: Prisma.ProductWhereInput = {
       ...scope,
-      ...(query.size ? { sizes: { has: query.size } } : {}),
+      ...(query.size
+        ? { soldOut: false, sizes: { some: { size: query.size, quantity: { gt: 0 } } } }
+        : {}),
     };
 
     const limit = query.limit ?? CATALOG_PAGE_SIZE;
@@ -82,28 +131,24 @@ export class CatalogService {
     // приехать дважды, а другой — не приехать вовсе.
     const orderBy = [...(SORT_ORDER[query.sort ?? "pop"] ?? SORT_ORDER.pop), { id: "asc" as const }];
 
-    const [rows, matched, total, scopeRows] = await Promise.all([
+    const [rows, matched, total, facet] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        include: { category: true },
+        include: TILE,
         orderBy,
         take: limit,
         skip: offset,
       }),
       this.prisma.product.count({ where }),
       this.prisma.product.count(),
-      // Размеры распроданных товаров не считаются доступными: иначе фильтр
-      // предлагает размер, по которому нечего купить.
-      // Выборка не ограничена намеренно — таблица в десятки строк, и урезать её
-      // означало бы соврать в фасете. Когда каталог вырастет, это место
-      // переписывается на `SELECT DISTINCT unnest(sizes)`.
-      this.prisma.product.findMany({
-        where: { ...scope, soldOut: false },
-        select: { sizes: true },
+      // Размеры распроданных товаров и нулевые остатки не считаются доступными:
+      // иначе фильтр предлагает размер, по которому нечего купить.
+      this.prisma.productSize.findMany({
+        where: { quantity: { gt: 0 }, product: { ...scope, soldOut: false } },
+        select: { size: true },
+        distinct: ["size"],
       }),
     ]);
-
-    const available = new Set(scopeRows.flatMap((row) => row.sizes));
 
     return {
       items: rows.map(toDto),
@@ -112,7 +157,26 @@ export class CatalogService {
       offset,
       limit,
       sizes: [...CATALOG_SIZES],
-      availableSizes: CATALOG_SIZES.filter((size) => available.has(size)),
+      availableSizes: gridSizes(facet),
+    };
+  }
+
+  /** Карточка товара по слагу. `null` — товара нет, контроллер превратит это в 404. */
+  async product(slug: string): Promise<ProductDetail | null> {
+    const row = await this.prisma.product.findUnique({ where: { slug }, include: CARD });
+    if (!row) return null;
+
+    return {
+      ...toDto(row),
+      categoryLabel: row.category.label,
+      ...(row.description ? { description: row.description } : {}),
+      ...(row.composition ? { composition: row.composition } : {}),
+      ...(row.care ? { care: row.care } : {}),
+      ...(row.rating != null ? { rating: row.rating } : {}),
+      reviewCount: row.reviewCount,
+      photos: row.photos,
+      colors: row.colors.map((color) => ({ name: color.name, hex: color.hex })),
+      sizeRows: toSizeRows(row),
     };
   }
 }

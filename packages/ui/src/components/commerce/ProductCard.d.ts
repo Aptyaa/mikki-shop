@@ -12,6 +12,7 @@ export interface ProductCardProps {
   /** Строка под ценой: размеры «XS · S · M» либо заметка об остатке с `Dot`. */
   sizes?: React.ReactNode;
   favourite?: boolean;
+  /** Omit to hide the favourite control entirely. */
   onFavourite?: () => void;
   onClick?: () => void;
   soldOut?: boolean;

@@ -19,6 +19,7 @@ import {
 import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
+import { navigate } from "../lib/route";
 import { plural } from "../lib/plural";
 
 const SORTS: { key: CatalogSort; label: string }[] = [
@@ -225,6 +226,7 @@ export function CatalogScreen() {
                   soldOut={product.soldOut}
                   favourite={favourites.has(product.id)}
                   onFavourite={() => toggleFavourite(product.id)}
+                  onClick={() => navigate({ name: "product", slug: product.slug })}
                   sizes={
                     product.soldOut ? undefined
                       : product.stockNote

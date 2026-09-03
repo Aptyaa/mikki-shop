@@ -2,16 +2,33 @@ import type {
   CatalogCategory,
   CatalogQuery,
   CatalogResponse,
+  ProductDetail,
 } from "@mikki-shop/shared-types";
 
 // Пусто при сборке без переменной — тогда запрос уйдёт на тот же origin,
 // что и приложение. Значение задаётся в корневом .env (VITE_API_URL).
 const BASE_URL: string = import.meta.env.VITE_API_URL ?? "";
 
+/**
+ * Ошибка запроса с кодом ответа.
+ *
+ * Код нужен экрану товара: 404 — это «такого товара нет», отдельный текст и
+ * дорога назад в каталог, а не «проверьте соединение и попробуйте снова».
+ */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, { signal });
   if (!response.ok) {
-    throw new Error(`${path}: HTTP ${response.status}`);
+    throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
   }
   return (await response.json()) as T;
 }
@@ -31,4 +48,8 @@ export function fetchProducts(query: CatalogQuery, signal?: AbortSignal): Promis
 
   const search = params.toString();
   return get<CatalogResponse>(`/catalog/products${search ? `?${search}` : ""}`, signal);
+}
+
+export function fetchProduct(slug: string, signal?: AbortSignal): Promise<ProductDetail> {
+  return get<ProductDetail>(`/catalog/products/${encodeURIComponent(slug)}`, signal);
 }

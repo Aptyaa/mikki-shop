@@ -32,15 +32,66 @@ model Product {
   wasPrice   Int?
   tag        String?
   tagTone    String?
-  sizes      String[]
   soldOut    Boolean  @default(false)
   /// Заметка об остатке, если он мал: «Остался последний размер S».
   stockNote  String?
   /// Вес для сортировки «Популярные».
   popularity Int      @default(0)
   createdAt  DateTime @default(now())
+
+  // Поля ниже нужны только карточке товара — в выдаче каталога они не читаются.
+  /// Абзац описания. Один-два предложения по правилам бренда, без восклицаний.
+  description String?
+  /// Состав: «меринос 70%, акрил 30%».
+  composition String?
+  /// Уход одной строкой.
+  care        String?
+  /// Средняя оценка. Звёзды на экране показываются только от трёх отзывов.
+  rating      Float?
+  reviewCount Int      @default(0)
+  /// URL фотографий по порядку. Пока пусто у всех: съёмки ещё не было.
+  photos      String[]
+
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category       @relation(fields: [categoryId], references: [id])
+  sizes      ProductSize[]
+  colors     ProductColor[]
 
   @@index([categoryId])
+}
+
+/// Размер товара: остаток и мерки.
+///
+/// Отдельная таблица вместо массива строк в `Product.sizes`: карточке нужно
+/// знать остаток по каждому размеру (иначе `SizeSelector` нечем зачеркнуть) и
+/// мерки для таблицы размеров. Держать рядом массив и таблицу — значит завести
+/// два источника правды, которые разъедутся.
+model ProductSize {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  /// Остаток в штуках. Ноль — размер остаётся в сетке зачёркнутым, а не прячется.
+  quantity  Int     @default(0)
+  /// Мерки в сантиметрах, диапазоном: «34–40». Строкой, а не числом: в таблице
+  /// размеров это диапазон, и считать по нему нечего.
+  chestCm   String?
+  neckCm    String?
+  backCm    String?
+
+  @@unique([productId, size])
+  @@index([productId])
+}
+
+/// Расцветка товара. `hex` — цвет ткани, а не интерфейса: токены его не описывают.
+model ProductColor {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  hex       String
+  sortOrder Int     @default(0)
+
+  @@unique([productId, name])
+  @@index([productId])
 }

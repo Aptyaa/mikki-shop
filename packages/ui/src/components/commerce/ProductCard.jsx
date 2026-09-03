@@ -19,14 +19,16 @@ export function ProductCard({title,price,was,image,tag,tagTone="sale",sizes,favo
         {tag&&<span style={{position:"absolute",top:10,left:10}}><Tag tone={tagTone}>{tag}</Tag></span>}
         {soldOut&&<span style={{position:"absolute",inset:0,display:"grid",placeItems:"center"}}>
           <Tag tone="neutral">нет в наличии</Tag></span>}
-        <button type="button" aria-label="В избранное"
-          onClick={(e)=>{e.stopPropagation();onFavourite&&onFavourite();}}
+        {/* Без обработчика сердечка нет вовсе — как у ProductRow. Кнопка,
+            которая ничего не делает, читается как сломанная. */}
+        {onFavourite&&<button type="button" aria-label="В избранное"
+          onClick={(e)=>{e.stopPropagation();onFavourite();}}
           style={{position:"absolute",top:8,right:8,width:32,height:32,borderRadius:"var(--r-pill)",
             border:"none",background:"var(--bg-elevated)",
             display:"grid",placeItems:"center",cursor:"pointer",
             color:favourite?"var(--accent-fav)":"var(--text-muted)",fontSize:15,lineHeight:1}}>
           {favourite?"♥":"♡"}
-        </button>
+        </button>}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:"var(--sp-2)"}}>
         <span style={{fontFamily:"var(--font-body)",fontWeight:"var(--fw-regular)",fontSize:"var(--fs-body-sm)",
