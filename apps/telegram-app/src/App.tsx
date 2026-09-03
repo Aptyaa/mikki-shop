@@ -3,7 +3,9 @@ import { ScreenLayer } from "./components/ScreenLayer";
 import { useRoute } from "./lib/route";
 import { useSession } from "./lib/session";
 import { CartScreen } from "./screens/CartScreen";
+import { CheckoutScreen } from "./screens/CheckoutScreen";
 import { CatalogScreen } from "./screens/CatalogScreen";
+import { OrdersScreen } from "./screens/OrdersScreen";
 import { ProductScreen } from "./screens/ProductScreen";
 
 /**
@@ -40,6 +42,8 @@ export function App() {
       )}
 
       {route.name === "cart" && <CartScreen />}
+      {route.name === "checkout" && <CheckoutScreen />}
+      {route.name === "orders" && <OrdersScreen />}
     </>
   );
 }

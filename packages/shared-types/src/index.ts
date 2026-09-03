@@ -182,3 +182,65 @@ export interface AuthSession {
   expiresAt: number;
   user: AuthUser;
 }
+
+/** Способ получения заказа. */
+export type DeliveryMethod = "courier" | "pickup" | "post";
+
+/** Что происходит с заказом. Оплаты пока нет — заявку ведёт менеджер. */
+export type OrderStatus = "NEW" | "CONFIRMED" | "SHIPPED" | "DONE" | "CANCELLED";
+
+/** Что покупатель заполняет на оформлении. Позиции берутся из его корзины. */
+export interface OrderDraft {
+  customerName: string;
+  phone: string;
+  delivery: DeliveryMethod;
+  /** Обязателен для курьера и почты, для самовывоза не нужен. */
+  address?: string;
+  comment?: string;
+  /** Кличка питомца. Необязательна: заказ можно оформить и без неё. */
+  petName?: string;
+  /**
+   * Согласие на обработку персональных данных (152-ФЗ).
+   *
+   * Обязательное: имя, телефон и адрес — это ПД, и без согласия их нельзя ни
+   * хранить, ни передавать курьеру. Едет в запросе и проверяется на сервере,
+   * а не только галочкой на экране: галочку в браузере снимает кто угодно, а
+   * доказывать согласие придётся по конкретному заказу.
+   */
+  consent: boolean;
+  items: CartItemInput[];
+}
+
+/** Строка заказа — слепок товара на момент покупки. */
+export interface OrderLine {
+  slug: string;
+  title: string;
+  size: CatalogSize;
+  color?: string;
+  /** Цена на момент заказа, а не текущая цена в каталоге. */
+  price: number;
+  quantity: number;
+}
+
+export interface Order {
+  /** Короткий номер для разговора с менеджером: «заказ 1042». */
+  number: number;
+  status: OrderStatus;
+  createdAt: string;
+  customerName: string;
+  phone: string;
+  delivery: DeliveryMethod;
+  address?: string;
+  comment?: string;
+  petName?: string;
+  total: number;
+  lines: OrderLine[];
+}
+
+/**
+ * Почему заказ не удалось оформить.
+ *
+ * Отдельным кодом, а не текстом: `out-of-stock` экран показывает иначе —
+ * ведёт в корзину поправить состав, а не предлагает «попробовать снова».
+ */
+export type OrderFailure = "empty-cart" | "out-of-stock" | "invalid";

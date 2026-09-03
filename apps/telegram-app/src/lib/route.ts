@@ -12,12 +12,16 @@ import { useSyncExternalStore } from "react";
 export type Route =
   | { name: "catalog" }
   | { name: "product"; slug: string }
-  | { name: "cart" };
+  | { name: "cart" }
+  | { name: "checkout" }
+  | { name: "orders" };
 
 const PRODUCT = /^#\/product\/([^/?#]+)/;
 
 export function parseRoute(hash: string): Route {
   if (/^#\/cart\b/.test(hash)) return { name: "cart" };
+  if (/^#\/checkout\b/.test(hash)) return { name: "checkout" };
+  if (/^#\/orders\b/.test(hash)) return { name: "orders" };
 
   const match = PRODUCT.exec(hash);
   if (!match?.[1]) return { name: "catalog" };
@@ -32,6 +36,8 @@ export function parseRoute(hash: string): Route {
 export function routeToHash(route: Route): string {
   if (route.name === "product") return `#/product/${encodeURIComponent(route.slug)}`;
   if (route.name === "cart") return "#/cart";
+  if (route.name === "checkout") return "#/checkout";
+  if (route.name === "orders") return "#/orders";
   return "#/";
 }
 

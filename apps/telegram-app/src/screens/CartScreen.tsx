@@ -94,6 +94,10 @@ export function CartScreen() {
   const count = data?.count ?? 0;
   // Строки, которых уже нет в корзине, забирают с собой и предупреждение.
   const adjusted = adjustedKeys.some((key) => lines.some((line) => cartKey(line) === key));
+  // Сервер отказывает всему заказу, если хотя бы одна строка не набирается со
+  // склада. Строки с нулём подрезка не трогает — их убирает покупатель, — и
+  // без этой проверки «оформить» вело бы в чекаут только за 409 и обратно.
+  const blocked = lines.some((line) => line.quantity > line.maxQuantity);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
@@ -165,6 +169,24 @@ export function CartScreen() {
               <span>Итого</span>
               <PriceBlock price={data?.total ?? 0} size="lg" />
             </Band>
+
+            {/* Оформлять нечего, если всё, что лежит, недоступно: итог нулевой,
+                и заявка ушла бы пустой. */}
+            <Button
+              block
+              disabled={(data?.total ?? 0) === 0 || blocked}
+              onClick={() => navigate({ name: "checkout" })}
+              style={{ marginTop: "var(--sp-5)" }}
+            >
+              Оформить заказ
+            </Button>
+
+            {blocked && (data?.total ?? 0) > 0 && (
+              <p style={{ margin: "var(--sp-3) 0 0", fontSize: "var(--fs-caption)",
+                color: "var(--text-muted)", textAlign: "center" }}>
+                Уберите позиции, которых нет в наличии, — иначе заказ не оформить.
+              </p>
+            )}
 
             <div style={{ marginTop: "var(--sp-5)", display: "flex", justifyContent: "center" }}>
               <Button variant="ghost" size="sm" onClick={clear}>

@@ -30,6 +30,28 @@ model User {
   utmSource    String?
   createdAt    DateTime @default(now())
   lastSeenAt   DateTime @default(now())
+
+  pets   Pet[]
+  orders Order[]
+}
+
+/// Питомец — получатель заказа.
+///
+/// Заведён отдельной сущностью, а не полем заказа, по `ARCHITECTURE.md`:
+/// позже на Pet завяжутся поиск компаньонов и вязка, и мигрировать туда
+/// заказы будет дорого, а сделать сразу — дёшево. Пока у него только кличка:
+/// экрана профиля питомца ещё нет, кличку спрашивают при оформлении.
+model Pet {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+
+  orders Order[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Category {
@@ -73,6 +95,7 @@ model Product {
   category   Category       @relation(fields: [categoryId], references: [id])
   sizes      ProductSize[]
   colors     ProductColor[]
+  orderItems OrderItem[]
 
   @@index([categoryId])
 }
@@ -111,4 +134,79 @@ model ProductColor {
 
   @@unique([productId, name])
   @@index([productId])
+}
+
+/// Что происходит с заказом. Оплаты пока нет — заявка уходит менеджеру,
+/// он подтверждает её руками.
+enum OrderStatus {
+  /// Заявка создана, менеджер ещё не смотрел.
+  NEW
+  /// Менеджер связался и подтвердил.
+  CONFIRMED
+  /// Отправлен.
+  SHIPPED
+  /// Получен.
+  DONE
+  CANCELLED
+}
+
+model Order {
+  id     String @id @default(uuid())
+  /// Короткий номер для разговора с покупателем: «заказ 1042».
+  /// Отдельно от `id`: uuid по телефону не продиктуешь.
+  number Int    @unique @default(autoincrement())
+
+  userId String
+  user   User    @relation(fields: [userId], references: [id])
+  petId  String?
+  pet    Pet?    @relation(fields: [petId], references: [id])
+
+  status OrderStatus @default(NEW)
+
+  /// Контакты на момент заказа. Имя приходит из Telegram, телефон покупатель
+  /// вводит сам: в `initData` его нет, а менеджеру надо звонить.
+  customerName String
+  phone        String
+  /// Способ получения и адрес — см. `DELIVERY_METHODS` в коде.
+  delivery     String
+  address      String?
+  comment      String?
+
+  /// Когда покупатель согласился на обработку персональных данных (152-ФЗ).
+  /// Хранится отметкой времени, а не флагом: доказывать придётся не «галочка
+  /// стояла», а «согласие дано тогда-то по этому заказу».
+  consentAt DateTime
+
+  /// Сумма на момент оформления. Цены в каталоге меняются, а заказ — нет:
+  /// покупателю обещали столько, столько с него и возьмут.
+  total     Int
+  createdAt DateTime @default(now())
+
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Строка заказа — слепок товара на момент покупки.
+///
+/// Название и цена скопированы намеренно: товар потом переименуют, подорожает
+/// или уедет из каталога, а в заказе должно остаться то, что покупали.
+/// Ссылка на товар необязательная и ни на что не влияет — она для отчётов.
+model OrderItem {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  slug     String
+  title    String
+  size     String
+  color    String?
+  price    Int
+  quantity Int
+
+  @@index([orderId])
 }
