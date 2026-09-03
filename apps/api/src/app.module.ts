@@ -6,6 +6,7 @@ import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { CartModule } from "./cart/cart.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { HealthModule } from "./health/health.module";
+import { OrdersModule } from "./orders/orders.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     HealthModule,
     CatalogModule,
     CartModule,
+    OrdersModule,
   ],
   // Гвард глобальный: закрыто по умолчанию, открыто через `@Public()`.
   // Забытый декоратор тогда даёт 401 на публичной ручке — это видно сразу,

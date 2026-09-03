@@ -20,6 +20,7 @@ import {
 import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
+import { useAuth } from "../lib/auth";
 import { useCart } from "../lib/cart";
 import { navigate } from "../lib/route";
 import { plural } from "../lib/plural";
@@ -64,6 +65,8 @@ export function CatalogScreen() {
   const cartCount = useCart((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0),
   );
+  // Ссылка на заказы только у вошедших: гостю она ведёт в пустой экран.
+  const signedIn = useAuth((state) => state.token !== null);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search.trim()), 300);
@@ -145,6 +148,11 @@ export function CatalogScreen() {
             <IconButton label="Фильтры" onClick={() => setFiltersOpen(true)}>
               <Icon name="sliders-horizontal" />
             </IconButton>
+            {signedIn && (
+              <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
+                <Icon name="package" />
+              </IconButton>
+            )}
             <IconButton
               label="Корзина"
               onClick={() => navigate({ name: "cart" })}

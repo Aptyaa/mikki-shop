@@ -5,6 +5,8 @@ import type {
   CatalogCategory,
   CatalogQuery,
   CatalogResponse,
+  Order,
+  OrderDraft,
   ProductDetail,
 } from "@mikki-shop/shared-types";
 import { bearerToken, useAuth } from "../lib/auth";
@@ -111,4 +113,13 @@ export function fetchCartPreview(
 /** Обмен `initData` из Mini App на токен покупателя. */
 export function login(initData: string, signal?: AbortSignal): Promise<AuthSession> {
   return post<AuthSession>("/auth/telegram", { initData }, signal);
+}
+
+/** Оформление заказа. Требует входа: заказ надо к кому-то привязать. */
+export function createOrder(draft: OrderDraft, signal?: AbortSignal): Promise<Order> {
+  return post<Order>("/orders", draft, signal);
+}
+
+export function fetchOrders(signal?: AbortSignal): Promise<Order[]> {
+  return get<Order[]>("/orders", signal);
 }

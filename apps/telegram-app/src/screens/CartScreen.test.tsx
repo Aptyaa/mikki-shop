@@ -192,6 +192,24 @@ describe("CartScreen — наличие", () => {
     expect(screen.getAllByText("0 ₽")).toHaveLength(2);
   });
 
+  // Сервер отказывает всему заказу на любой строке, которой не хватает.
+  // Пустить в чекаут значило бы прогнать покупателя по кругу «оформить → 409
+  // → корзина» без единого способа его разомкнуть.
+  it("не пускает оформлять, пока в корзине есть недоступная строка", async () => {
+    useCart.setState({ items: [SAHAROK, { slug: "bandana-kletka", size: "M", quantity: 1 }] });
+    preview.mockResolvedValue(
+      answer({
+        lines: [line(), line({ slug: "bandana-kletka", maxQuantity: 0, lineTotal: 0 })],
+        hasShortage: true,
+      }),
+    );
+    renderScreen();
+
+    await screen.findByText(/Этого размера сейчас нет/);
+    expect(screen.getByRole("button", { name: "Оформить заказ" })).toBeDisabled();
+    expect(screen.getByText(/Уберите позиции, которых нет в наличии/)).toBeTruthy();
+  });
+
   // Молча удалить строку хуже, чем показать её с пометкой: покупатель должен
   // увидеть, что именно выпало.
   it("не удаляет строку с нулевым остатком сама", async () => {
