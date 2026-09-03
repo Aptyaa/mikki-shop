@@ -9,11 +9,16 @@ import { useSyncExternalStore } from "react";
  * чего роутер и берут, — рабочую кнопку «назад» в браузере и в вебвью
  * Telegram, плюс ссылку на конкретный товар, которую можно переслать.
  */
-export type Route = { name: "catalog" } | { name: "product"; slug: string };
+export type Route =
+  | { name: "catalog" }
+  | { name: "product"; slug: string }
+  | { name: "cart" };
 
 const PRODUCT = /^#\/product\/([^/?#]+)/;
 
 export function parseRoute(hash: string): Route {
+  if (/^#\/cart\b/.test(hash)) return { name: "cart" };
+
   const match = PRODUCT.exec(hash);
   if (!match?.[1]) return { name: "catalog" };
   try {
@@ -25,7 +30,9 @@ export function parseRoute(hash: string): Route {
 }
 
 export function routeToHash(route: Route): string {
-  return route.name === "product" ? `#/product/${encodeURIComponent(route.slug)}` : "#/";
+  if (route.name === "product") return `#/product/${encodeURIComponent(route.slug)}`;
+  if (route.name === "cart") return "#/cart";
+  return "#/";
 }
 
 function subscribe(onChange: () => void): () => void {

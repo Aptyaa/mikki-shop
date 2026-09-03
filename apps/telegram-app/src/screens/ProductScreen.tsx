@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Badge,
   Band,
   Button,
   ColorPicker,
@@ -8,6 +9,7 @@ import {
   Dot,
   EmptyState,
   Icon,
+  IconButton,
   Notice,
   PhotoSlot,
   PriceBlock,
@@ -22,6 +24,7 @@ import {
 import type { CatalogSize, ProductDetail, ProductSizeRow } from "@mikki-shop/shared-types";
 import { HttpError, fetchProduct, fetchProducts } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
+import { useCart } from "../lib/cart";
 import { goBack, navigate } from "../lib/route";
 
 /** Сколько похожих товаров показывать под карточкой. */
@@ -166,6 +169,12 @@ export function ProductScreen({ slug }: { slug: string }) {
   const [size, setSize] = useState<CatalogSize | undefined>(undefined);
   const [color, setColor] = useState<string | undefined>(undefined);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const addToCart = useCart((state) => state.add);
+  const cartCount = useCart((state) =>
+    state.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
 
   const productQuery = useQuery({
     queryKey: ["catalog", "product", slug],
@@ -199,6 +208,18 @@ export function ProductScreen({ slug }: { slug: string }) {
   // Расцветка по умолчанию — первая: свотчи без выбранного читаются как
   // «ни одного нет», хотя расцветка у товара всегда какая-то есть.
   const selectedColor = color ?? product?.colors[0]?.name;
+  const canAdd = product != null && !product.soldOut && size != null;
+
+  function addSelection() {
+    if (product == null || size == null) return;
+    addToCart({
+      slug: product.slug,
+      size,
+      ...(selectedColor ? { color: selectedColor } : {}),
+      quantity: 1,
+    });
+    setAdded(true);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
@@ -206,7 +227,23 @@ export function ProductScreen({ slug }: { slug: string }) {
       {/* Заголовка в шапке нет намеренно: Микки стоит по центру полосы, и
           длинное название категории («Верхняя одежда») наезжало бы на него.
           Категория читается над заголовком товара, где ей и место. */}
-      <ScreenBar onBack={goBack} />
+      <ScreenBar
+        onBack={goBack}
+        right={
+          <IconButton
+            label="Корзина"
+            onClick={() => navigate({ name: "cart" })}
+            style={{ position: "relative" }}
+          >
+            <Icon name="shopping-bag" />
+            {cartCount > 0 && (
+              <span style={{ position: "absolute", top: 2, right: 2 }}>
+                <Badge count={cartCount} />
+              </span>
+            )}
+          </IconButton>
+        }
+      />
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
         padding: "var(--sp-5) var(--gutter) var(--safe-scroll-bottom)" }}>
@@ -311,6 +348,29 @@ export function ProductScreen({ slug }: { slug: string }) {
                   fontSize: "var(--fs-caption)", color: "var(--text-muted)" }}>
                   Зачёркнутых размеров сейчас нет в наличии.
                 </p>
+              )}
+            </div>
+
+            <div style={{ marginTop: "var(--sp-6)", display: "flex", flexDirection: "column",
+              gap: "var(--sp-3)" }}>
+              {/* Размер обязателен: положить в корзину «свитер вообще» нельзя —
+                  одежда для собак без размера не отгружается. */}
+              <Button block disabled={!canAdd} onClick={addSelection}>
+                В корзину
+              </Button>
+              {product.soldOut ? (
+                <p style={{ margin: 0, fontSize: "var(--fs-caption)", color: "var(--text-muted)" }}>
+                  Товара нет в наличии. Напишите нам — скажем, когда привезём.
+                </p>
+              ) : !size ? (
+                <p style={{ margin: 0, fontSize: "var(--fs-caption)", color: "var(--text-muted)" }}>
+                  Выберите размер питомца.
+                </p>
+              ) : null}
+              {added && (
+                <Button block variant="outline" onClick={() => navigate({ name: "cart" })}>
+                  Перейти в корзину
+                </Button>
               )}
             </div>
 

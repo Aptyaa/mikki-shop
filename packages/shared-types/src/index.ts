@@ -115,3 +115,50 @@ export interface ProductDetail extends CatalogProduct {
   /** Сетка товара в порядке размерной сетки магазина. */
   sizeRows: ProductSizeRow[];
 }
+
+/**
+ * Позиция корзины в том виде, в каком её хранит клиент.
+ *
+ * Ни названия, ни цены здесь нет намеренно: и то и другое живёт в каталоге и
+ * меняется. Корзина в браузере помнит только «что выбрали», а как это сейчас
+ * называется и сколько стоит — считает бэкенд.
+ */
+export interface CartItemInput {
+  slug: string;
+  size: CatalogSize;
+  /** Название расцветки. Пусто — у товара расцветок нет. */
+  color?: string;
+  quantity: number;
+}
+
+/** Строка корзины, пересчитанная бэкендом. */
+export interface CartLineDto {
+  slug: string;
+  title: string;
+  size: CatalogSize;
+  color?: string;
+  /** Цена за штуку — с бэкенда, а не из localStorage клиента. */
+  price: number;
+  was?: number;
+  /** Сколько лежит в корзине, как её прислал клиент. */
+  quantity: number;
+  /**
+   * Сколько этого размера можно взять сейчас: ноль — размера нет в наличии.
+   * Точный остаток наружу не отдаётся, число ограничено сверху лимитом позиции.
+   */
+  maxQuantity: number;
+  /** `price × quantity`, но не больше, чем `maxQuantity` штук. */
+  lineTotal: number;
+}
+
+export interface CartPreview {
+  lines: CartLineDto[];
+  /** Слаги позиций, которых больше нет в каталоге, — их клиенту стоит выкинуть. */
+  gone: string[];
+  /** Сумма по тому, что реально можно купить. */
+  total: number;
+  /** Сколько штук всего — для счётчика в шапке. */
+  count: number;
+  /** Есть ли строки, где выбранного количества нет в наличии. */
+  hasShortage: boolean;
+}

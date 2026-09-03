@@ -6,6 +6,8 @@ export interface CartLineProps {
   price: number;
   image?: string;
   qty?: number;
+  /** Stock cap for the stepper. 0 drops the stepper: nothing to pick. */
+  maxQty?: number;
   onQty?: (value: number) => void;
   onRemove?: () => void;
   style?: React.CSSProperties;

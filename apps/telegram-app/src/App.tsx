@@ -1,15 +1,17 @@
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { useRoute } from "./lib/route";
+import { CartScreen } from "./screens/CartScreen";
 import { CatalogScreen } from "./screens/CatalogScreen";
 import { ProductScreen } from "./screens/ProductScreen";
 
 /**
- * Каталог не размонтируется, пока открыта карточка: иначе возврат назад
- * сбрасывал бы категорию, поиск и все подгруженные страницы выдачи.
+ * Спрятанный слой экрана.
  *
- * Прячется он `visibility`, а не `display: none`: у скрытого через `display`
- * элемента браузер выбрасывает бокс прокрутки, и каталог возвращался бы к
- * началу списка. `position: fixed` при этом убирает его из потока, чтобы
- * карточка занимала экран целиком.
+ * `visibility`, а не `display: none`: у скрытого через `display` элемента
+ * браузер выбрасывает бокс прокрутки, и экран возвращался бы к началу.
+ * `position: fixed` при этом убирает его из потока, чтобы верхний экран
+ * занимал вьюпорт целиком.
  */
 const HIDDEN = {
   position: "fixed",
@@ -20,19 +22,42 @@ const HIDDEN = {
   pointerEvents: "none",
 } as const;
 
+function Layer({ hidden, children }: { hidden: boolean; children: ReactNode }) {
+  return <div style={hidden ? HIDDEN : undefined}>{children}</div>;
+}
+
+/**
+ * Каталог и карточка не размонтируются, пока открыт другой экран: иначе
+ * возврат назад сбрасывал бы у каталога категорию, поиск и подгруженные
+ * страницы, а у карточки — выбранный размер и расцветку. Именно этот путь
+ * проходит покупатель: карточка → корзина → назад к карточке.
+ *
+ * Корзина размонтируется свободно: всё её состояние живёт в сторе.
+ */
 export function App() {
   const route = useRoute();
-  const product = route.name === "product" ? route : undefined;
+  const slug = route.name === "product" ? route.slug : undefined;
+
+  // Последний открытый товар, чтобы карточку было что показывать под корзиной.
+  const [lastSlug, setLastSlug] = useState(slug);
+  if (slug !== undefined && slug !== lastSlug) setLastSlug(slug);
 
   return (
     <>
-      <div style={product ? HIDDEN : undefined}>
+      <Layer hidden={route.name !== "catalog"}>
         <CatalogScreen />
-      </div>
+      </Layer>
+
       {/* `key` по слагу: переход с карточки на похожий товар — это новый экран,
           а не тот же с другими данными; иначе на нём остались бы выбранный
           размер, расцветка и прокрутка от предыдущего товара. */}
-      {product && <ProductScreen key={product.slug} slug={product.slug} />}
+      {lastSlug !== undefined && (
+        <Layer hidden={route.name !== "product"}>
+          <ProductScreen key={lastSlug} slug={lastSlug} />
+        </Layer>
+      )}
+
+      {route.name === "cart" && <CartScreen />}
     </>
   );
 }

@@ -21,6 +21,16 @@ describe("parseRoute", () => {
     });
   });
 
+  it("разбирает адрес корзины", () => {
+    expect(parseRoute("#/cart")).toEqual({ name: "cart" });
+    expect(parseRoute("#/cart?from=tile")).toEqual({ name: "cart" });
+  });
+
+  // Граница слова, а не просто префикс: «#/cartoon» — это не корзина.
+  it("не считает корзиной адрес, который лишь начинается с cart", () => {
+    expect(parseRoute("#/cartoon")).toEqual({ name: "catalog" });
+  });
+
   it("не заглатывает хвост после слага", () => {
     expect(parseRoute("#/product/luzha/otzyvy")).toMatchObject({ slug: "luzha" });
     expect(parseRoute("#/product/luzha?utm=tiktok")).toMatchObject({ slug: "luzha" });
@@ -37,6 +47,7 @@ describe("parseRoute", () => {
 describe("routeToHash", () => {
   it("собирает адрес обратно", () => {
     expect(routeToHash({ name: "catalog" })).toBe("#/");
+    expect(routeToHash({ name: "cart" })).toBe("#/cart");
     expect(routeToHash({ name: "product", slug: "sviter-saharok" })).toBe(
       "#/product/sviter-saharok",
     );

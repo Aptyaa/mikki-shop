@@ -1,4 +1,6 @@
 import type {
+  CartItemInput,
+  CartPreview,
   CatalogCategory,
   CatalogQuery,
   CatalogResponse,
@@ -33,6 +35,19 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok) {
+    throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
 export function fetchCategories(signal?: AbortSignal): Promise<CatalogCategory[]> {
   return get<CatalogCategory[]>("/catalog/categories", signal);
 }
@@ -52,4 +67,15 @@ export function fetchProducts(query: CatalogQuery, signal?: AbortSignal): Promis
 
 export function fetchProduct(slug: string, signal?: AbortSignal): Promise<ProductDetail> {
   return get<ProductDetail>(`/catalog/products/${encodeURIComponent(slug)}`, signal);
+}
+
+/**
+ * Пересчёт корзины на бэкенде: названия, цены и наличие берутся из каталога,
+ * а не из того, что клиент сложил себе в `localStorage`.
+ */
+export function fetchCartPreview(
+  items: CartItemInput[],
+  signal?: AbortSignal,
+): Promise<CartPreview> {
+  return post<CartPreview>("/cart/preview", { items }, signal);
 }

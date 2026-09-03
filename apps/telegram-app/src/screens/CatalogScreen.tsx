@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
+  Badge,
   Band,
   Button,
   Divider,
@@ -19,6 +20,7 @@ import {
 import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
+import { useCart } from "../lib/cart";
 import { navigate } from "../lib/route";
 import { plural } from "../lib/plural";
 
@@ -58,6 +60,10 @@ export function CatalogScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [favourites, setFavourites] = useState<ReadonlySet<string>>(new Set<string>());
+
+  const cartCount = useCart((state) =>
+    state.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search.trim()), 300);
@@ -138,6 +144,18 @@ export function CatalogScreen() {
             </IconButton>
             <IconButton label="Фильтры" onClick={() => setFiltersOpen(true)}>
               <Icon name="sliders-horizontal" />
+            </IconButton>
+            <IconButton
+              label="Корзина"
+              onClick={() => navigate({ name: "cart" })}
+              style={{ position: "relative" }}
+            >
+              <Icon name="shopping-bag" />
+              {cartCount > 0 && (
+                <span style={{ position: "absolute", top: 2, right: 2 }}>
+                  <Badge count={cartCount} />
+                </span>
+              )}
             </IconButton>
           </div>
         }
