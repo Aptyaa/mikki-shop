@@ -50,7 +50,6 @@ function serve(
     limit?: number;
     /** Всего в каталоге — отдельно от `matched`, как и у настоящего бэкенда. */
     total?: number;
-    availableSizes?: (query: CatalogQuery) => CatalogSize[];
   } = {},
 ) {
   const limit = options.limit ?? 8;
@@ -63,7 +62,7 @@ function serve(
       offset,
       limit,
       sizes: [...GRID],
-      availableSizes: options.availableSizes?.(query) ?? [...GRID],
+      availableSizes: [...GRID],
     };
   });
 }
