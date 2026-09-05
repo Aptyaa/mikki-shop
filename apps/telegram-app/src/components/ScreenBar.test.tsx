@@ -63,21 +63,30 @@ describe("ScreenBar — Микки у заголовка", () => {
   });
 
   /**
-   * Слово разрезано на «Катало» и «г», чтобы голова цеплялась к последней
-   * букве. Для скринридера и для глаз оно остаётся одним словом — дерево
-   * доступности склеивает соседние строки.
-   *
-   * Ловушка для тестов: `getByText("Каталог")` на таком заголовке **не
-   * сработает** — Testing Library сравнивает только прямые текстовые узлы
-   * элемента, а их здесь два. Проверять надо весь текст шапки.
+   * Заголовок лежит одним куском: голова цепляется к правому краю слова, а не
+   * к последней букве, поэтому резать текст не нужно вовсе.
    */
-  it("читается как одно слово, хоть и разрезан на два узла", () => {
+  it("оставляет заголовок целым текстом", () => {
+    render(<ScreenBar title="Каталог" />);
+
+    expect(screen.getByText("Каталог")).toBeTruthy();
+  });
+
+  /**
+   * Обрезка по колонке остаётся: длинный заголовок не должен наезжать на
+   * кнопки справа. Голове при этом разрешено рисовать за границей — иначе
+   * обрезка съела бы её.
+   */
+  it("режет длинный заголовок по колонке, но выпускает голову наружу", () => {
     const { container } = render(<ScreenBar title="Каталог" />);
 
-    expect(container.textContent).toBe("Каталог");
-    expect(screen.queryByText("Каталог")).toBeNull();
-    expect(screen.getByText("Катало")).toBeTruthy();
-    expect(screen.getByText("г")).toBeTruthy();
+    const title = [...container.querySelectorAll("span")].find((node) =>
+      (node.getAttribute("style") ?? "").includes("overflow"),
+    );
+    const style = title?.getAttribute("style") ?? "";
+    expect(style).toContain("overflow: clip");
+    expect(style).toContain("overflow-clip-margin");
+    expect(style).toContain("text-overflow: ellipsis");
   });
 
   // Голова — украшение рядом с текстом, который и так называет раздел.

@@ -33,49 +33,54 @@ const HEAD_TILT = 45;
  * Поворот не меняет размер элемента в раскладке, но меняет то, что видно:
  * прямоугольник `w × h`, повёрнутый на 45°, занимает по горизонтали
  * `(w + h) · cos45`. Разница пополам и есть вылет.
- *
- * Отсюда же берётся сдвиг: чтобы видимый левый край мордочки совпал с началом
- * последней буквы, слой ставится правее её начала ровно на этот вылет.
  */
-const HEAD_RATIO = 257 / 336; // пропорции файла mascot-head.png
+/** Пропорции `mascot-head.png` (168×128). Поменяется файл — поменять и здесь. */
+const HEAD_RATIO = 128 / 168;
 const HEAD_OVERHANG =
   ((HEAD_WIDTH * (1 + HEAD_RATIO)) / Math.SQRT2 - HEAD_WIDTH) / 2;
 
-/** Насколько мордочка приподнята над базовой линией строки. */
+/**
+ * На сколько мордочка вылезает за правый край заголовка.
+ *
+ * Считается от **правого края слова**, а не от начала последней буквы. Разница
+ * не косметическая: последние буквы у разделов разной ширины — «г» 8.9px,
+ * «ь» 10.8px, «а» 11.5px, «ы» 15.4px. Привязка к началу буквы прятала бы
+ * голову тем сильнее, чем буква шире, и на «Мои заказы» её съедало заметно
+ * больше, чем на «Каталоге». От правого края видимая часть головы одинакова
+ * везде.
+ */
+const HEAD_OFFSET = 16;
+
+/** Насколько мордочка приподнята над низом строки заголовка. */
 const HEAD_LIFT = 6;
+
+/**
+ * Сколько головы вылезает за границы заголовка — столько шапке и разрешаем
+ * рисовать наружу. Считается, а не подбирается.
+ */
+const TITLE_BLEED = Math.ceil(HEAD_OFFSET + HEAD_OVERHANG);
 
 /**
  * Заголовок с Микки, выглядывающим из-за последней буквы.
  *
- * Слово разрезается на «всё, кроме последней буквы» и саму букву, и голова
- * цепляется к букве, а не к слову целиком. Иначе один и тот же отступ давал бы
- * разную посадку на «Каталог» и «Профиль»: у слов разные последние буквы, и
- * считать пришлось бы от правого края всей строки.
- *
- * Мордочка лежит под текстом (`zIndex` у буквы выше) — она выглядывает из-за
- * надписи, а не лежит на ней.
+ * Текст лежит целиком в одном узле и рисуется поверх головы: она выглядывает
+ * из-за надписи, а не лежит на ней.
  */
 function TitleWithMascot({ title }: { title: string }) {
-  const head = title.slice(-1);
-  const rest = title.slice(0, -1);
-
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
-      {rest}
-      <span style={{ position: "relative", display: "inline-block" }}>
-        <Logo
-          variant="head"
-          style={{
-            position: "absolute",
-            zIndex: 0,
-            width: HEAD_WIDTH,
-            left: HEAD_OVERHANG,
-            bottom: HEAD_LIFT,
-            transform: `rotate(${HEAD_TILT}deg)`,
-          }}
-        />
-        <span style={{ position: "relative", zIndex: 1 }}>{head}</span>
-      </span>
+      <span style={{ position: "relative", zIndex: 1 }}>{title}</span>
+      <Logo
+        variant="head"
+        style={{
+          position: "absolute",
+          zIndex: 0,
+          width: HEAD_WIDTH,
+          right: -HEAD_OFFSET,
+          bottom: HEAD_LIFT,
+          transform: `rotate(${HEAD_TILT}deg)`,
+        }}
+      />
     </span>
   );
 }
@@ -119,9 +124,10 @@ export function ScreenBar({ title, subtitle, right, onBack }: ScreenBarProps) {
       title={withMascot ? <TitleWithMascot title={title} /> : title}
       subtitle={subtitle}
       right={right}
-      // Мордочка торчит за правый край заголовка, и обрезка многоточием её
-      // срезала бы. Многоточие здесь не теряется: названия разделов короткие.
-      titleOverflow={withMascot ? "visible" : "clip"}
+      // Мордочка торчит за правый край заголовка: обрезка по колонке остаётся
+      // (длинный заголовок не наедет на кнопки), но голове разрешено рисовать
+      // за границей.
+      titleBleed={withMascot ? TITLE_BLEED : 0}
       left={
         <>
           {onBack && !nativeBack && (
