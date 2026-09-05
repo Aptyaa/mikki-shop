@@ -53,6 +53,81 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+describe("ScreenBar — Микки у заголовка", () => {
+  it("ставит голову в заголовок, а знак по центру убирает", () => {
+    const { container } = render(<ScreenBar title="Каталог" />);
+
+    const images = [...container.querySelectorAll("img")];
+    expect(images).toHaveLength(1);
+    expect(images[0]?.getAttribute("src")).toContain("mascot-head");
+  });
+
+  /**
+   * Заголовок лежит одним куском: голова цепляется к правому краю слова, а не
+   * к последней букве, поэтому резать текст не нужно вовсе.
+   */
+  it("оставляет заголовок целым текстом", () => {
+    render(<ScreenBar title="Каталог" />);
+
+    expect(screen.getByText("Каталог")).toBeTruthy();
+  });
+
+  /**
+   * Обрезка по колонке остаётся: длинный заголовок не должен наезжать на
+   * кнопки справа. Голове при этом разрешено рисовать за границей — иначе
+   * обрезка съела бы её.
+   */
+  it("режет длинный заголовок по колонке, но выпускает голову наружу", () => {
+    const { container } = render(<ScreenBar title="Каталог" />);
+
+    const title = [...container.querySelectorAll("span")].find((node) =>
+      (node.getAttribute("style") ?? "").includes("overflow"),
+    );
+    const style = title?.getAttribute("style") ?? "";
+    expect(style).toContain("overflow: clip");
+    expect(style).toContain("overflow-clip-margin");
+    expect(style).toContain("text-overflow: ellipsis");
+  });
+
+  // Голова — украшение рядом с текстом, который и так называет раздел.
+  // «Микки Шоп» посреди заголовка скринридер читать не должен.
+  it("голова не подмешивает своё имя в заголовок", () => {
+    const { container } = render(<ScreenBar title="Каталог" />);
+
+    const head = container.querySelector("img");
+    expect(head).toHaveAttribute("alt", "");
+    expect(head).toHaveAttribute("aria-hidden", "true");
+    expect(container.textContent).toBe("Каталог");
+  });
+
+  /**
+   * У карточки товара заголовка нет вовсе: длинное название категории наезжало
+   * бы на знак. Цеплять голову там не к чему, и знак остаётся по центру полосы,
+   * как было до этой правки.
+   */
+  it("без заголовка возвращает знак по центру", () => {
+    const { container } = render(<ScreenBar />);
+
+    const images = [...container.querySelectorAll("img")];
+    expect(images).toHaveLength(1);
+    expect(images[0]?.getAttribute("src")).toContain("mascot-mark");
+  });
+
+  it("пустой заголовок считает отсутствующим", () => {
+    const { container } = render(<ScreenBar title="" />);
+
+    expect(container.querySelector("img")?.getAttribute("src")).toContain("mascot-mark");
+  });
+
+  // Заголовок бывает и не строкой — разрезать на буквы можно только строку.
+  it("нестроковый заголовок оставляет как есть", () => {
+    const { container } = render(<ScreenBar title={<b>Готово</b>} />);
+
+    expect(screen.getByText("Готово")).toBeTruthy();
+    expect(container.querySelector("img")?.getAttribute("src")).toContain("mascot-mark");
+  });
+});
+
 describe("ScreenBar вне Telegram", () => {
   it("рисует свою кнопку «назад»", () => {
     const onBack = vi.fn();
