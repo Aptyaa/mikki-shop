@@ -2,6 +2,7 @@ import React from "react";
 import MARK_PNG from "../../assets/mascot-mark.png";   // transparent — for overlaps
 import MARK_SVG from "../../assets/mascot.svg";        // full-colour vector, carries a light plate
 import MARK_MONO from "../../assets/mascot-mark-mono.svg";
+import HEAD from "../../assets/mascot-head.png";      // голова с шеей, без лап
 
 const wordBase={fontFamily:"var(--font-wordmark)",fontWeight:400,lineHeight:1,
   letterSpacing:"0.01em",whiteSpace:"nowrap"};
@@ -35,6 +36,24 @@ export function Logo({variant="horizontal",size="md",tone="ink",word="Микки
   if(variant==="mark")
     return <img src={src} alt={word} width={s.mark} height={s.mark}
       style={{objectFit:"contain",...style}} {...rest}/>;
+
+  // Только голова: мордочка целиком с шеей, срезанная дугой там, где начинается
+  // корпус. Отдельный файл, а не кадр из знака: голову ставят под наклоном, а
+  // прямоугольный кадр при повороте показывает шов по срезу.
+  //
+  // Ширина задаётся снаружи (`style`), высота считается сама: голова шире, чем
+  // выше, и вписывать её в квадрат `SIZES.mark` значило бы врать о размере.
+  //
+  // Украшение, а не имя: `alt=""` и `aria-hidden` намеренно. Голову ставят
+  // рядом с текстом, который и так называет раздел, — и «Микки Шоп», прочитанное
+  // скринридером посреди заголовка, было бы лишним словом. Нужен знак с именем —
+  // это `variant="mark"`; при необходимости `alt` перекрывается пропсом.
+  // `maxWidth:none` — в `base.css` у всех картинок стоит `max-width:100%`, а
+  // голову вешают украшением на узкий элемент (например, на одну букву
+  // заголовка), и правило зажимало бы её до ширины родителя.
+  if(variant==="head")
+    return <img src={HEAD} alt="" aria-hidden="true"
+      style={{display:"block",height:"auto",maxWidth:"none",...style}} {...rest}/>;
 
   if(variant==="wordmark")
     return <span style={{...wordBase,fontSize:s.word,color,...style}} {...rest}>{word}</span>;

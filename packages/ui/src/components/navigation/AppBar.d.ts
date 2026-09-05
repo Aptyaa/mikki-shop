@@ -10,6 +10,13 @@ export interface AppBarProps {
   /** Over-imagery variant: no background, no border. */
   transparent?: boolean;
   center?: boolean;
+  /**
+   * Что делать с тем, что не влезло в заголовок.
+   * "clip" (по умолчанию) — обрезать многоточием, чтобы длинный заголовок не
+   * наезжал на кнопки. "visible" — не резать: нужно, когда из заголовка
+   * намеренно что-то торчит наружу.
+   */
+  titleOverflow?: "clip" | "visible";
   style?: React.CSSProperties;
 }
 export function AppBar(props: AppBarProps): JSX.Element;

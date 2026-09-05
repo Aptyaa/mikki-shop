@@ -7,8 +7,10 @@ export interface LogoProps {
    * perched    — mascot sitting on top of the word, paws on the letters.
    * peeking    — mascot cropped behind the word, head and paws only.
    * mark / wordmark — a single element on its own.
+   * head       — только голова с шеей, без лап. Ширину задаёт `style`,
+   *              высота считается сама; в отличие от `mark` не квадратная.
    */
-  variant?: "horizontal" | "vertical" | "arc" | "perched" | "peeking" | "mark" | "wordmark";
+  variant?: "horizontal" | "vertical" | "arc" | "perched" | "peeking" | "mark" | "wordmark" | "head";
   size?: "sm" | "md" | "lg" | "xl";
   /** ink on light surfaces, inverse on olive, primary for accent contexts. */
   tone?: "ink" | "inverse" | "primary";
