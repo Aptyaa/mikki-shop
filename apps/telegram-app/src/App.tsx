@@ -7,6 +7,7 @@ import { CheckoutScreen } from "./screens/CheckoutScreen";
 import { CatalogScreen } from "./screens/CatalogScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { OrdersScreen } from "./screens/OrdersScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { ProductScreen } from "./screens/ProductScreen";
 
 /** Ключ каталога, открытого без категории: тот же псевдоключ, что и в фильтре. */
@@ -94,6 +95,7 @@ export function App() {
       {route.name === "cart" && <CartScreen />}
       {route.name === "checkout" && <CheckoutScreen />}
       {route.name === "orders" && <OrdersScreen />}
+      {route.name === "profile" && <ProfileScreen />}
     </>
   );
 }

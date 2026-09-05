@@ -39,6 +39,10 @@ describe("parseRoute", () => {
     });
   });
 
+  it("разбирает адрес профиля", () => {
+    expect(parseRoute("#/profile")).toEqual({ name: "profile" });
+  });
+
   it("разбирает адрес корзины", () => {
     expect(parseRoute("#/cart")).toEqual({ name: "cart" });
     expect(parseRoute("#/cart?from=tile")).toEqual({ name: "cart" });
@@ -79,6 +83,7 @@ describe("routeToHash", () => {
     expect(routeToHash({ name: "home" })).toBe("#/");
     expect(routeToHash({ name: "catalog" })).toBe("#/catalog");
     expect(routeToHash({ name: "cart" })).toBe("#/cart");
+    expect(routeToHash({ name: "profile" })).toBe("#/profile");
     expect(routeToHash({ name: "product", slug: "sviter-saharok" })).toBe(
       "#/product/sviter-saharok",
     );

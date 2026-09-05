@@ -7,6 +7,8 @@ import type {
   CatalogResponse,
   Order,
   OrderDraft,
+  Pet,
+  PetDraft,
   ProductDetail,
 } from "@mikki-shop/shared-types";
 import { bearerToken, useAuth } from "../lib/auth";
@@ -37,10 +39,41 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /**
+     * Причина и текст от бэкенда, если он их прислал.
+     *
+     * По одному коду ответа не всегда понятно, что показать: `/pets` отвечает
+     * 409 и на занятую кличку, и на упёршийся лимит питомцев, а это разные
+     * сообщения у разных мест экрана.
+     */
+    readonly reason?: string,
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "HttpError";
   }
+}
+
+/**
+ * Ошибка ответа вместе с разобранным телом.
+ *
+ * Тело читается через `try`: у 204 его нет вовсе, у падения прокси оно не
+ * JSON, и разбор не должен подменять собой настоящую причину — код ответа.
+ */
+async function failure(response: Response, path: string): Promise<HttpError> {
+  forgetSessionOn(response.status);
+
+  let reason: string | undefined;
+  let detail: string | undefined;
+  try {
+    const body = (await response.json()) as { reason?: unknown; message?: unknown };
+    if (typeof body?.reason === "string") reason = body.reason;
+    if (typeof body?.message === "string") detail = body.message;
+  } catch {
+    // Тела нет или оно не JSON — остаётся код ответа, его и хватит.
+  }
+
+  return new HttpError(response.status, `${path}: HTTP ${response.status}`, reason, detail);
 }
 
 /**
@@ -57,25 +90,28 @@ function forgetSessionOn(status: number): void {
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, { headers: headers(), signal });
-  if (!response.ok) {
-    forgetSessionOn(response.status);
-    throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
-  }
+  if (!response.ok) throw await failure(response, path);
   return (await response.json()) as T;
 }
 
-async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+async function send<T>(
+  method: "POST" | "PATCH",
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
+    method,
     headers: headers({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
     ...(signal ? { signal } : {}),
   });
-  if (!response.ok) {
-    forgetSessionOn(response.status);
-    throw new HttpError(response.status, `${path}: HTTP ${response.status}`);
-  }
+  if (!response.ok) throw await failure(response, path);
   return (await response.json()) as T;
+}
+
+function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return send<T>("POST", path, body, signal);
 }
 
 export function fetchCategories(signal?: AbortSignal): Promise<CatalogCategory[]> {
@@ -122,4 +158,28 @@ export function createOrder(draft: OrderDraft, signal?: AbortSignal): Promise<Or
 
 export function fetchOrders(signal?: AbortSignal): Promise<Order[]> {
   return get<Order[]>("/orders", signal);
+}
+
+/** Питомцы покупателя. Требует входа: чужие собаки никого не касаются. */
+export function fetchPets(signal?: AbortSignal): Promise<Pet[]> {
+  return get<Pet[]>("/pets", signal);
+}
+
+export function createPet(draft: PetDraft, signal?: AbortSignal): Promise<Pet> {
+  return post<Pet>("/pets", draft, signal);
+}
+
+export function updatePet(id: string, draft: PetDraft, signal?: AbortSignal): Promise<Pet> {
+  return send<Pet>("PATCH", `/pets/${encodeURIComponent(id)}`, draft, signal);
+}
+
+/** Удаление. Ответ пустой (204), поэтому разбирать тело нечего. */
+export async function deletePet(id: string, signal?: AbortSignal): Promise<void> {
+  const path = `/pets/${encodeURIComponent(id)}`;
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: headers(),
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok) throw await failure(response, path);
 }

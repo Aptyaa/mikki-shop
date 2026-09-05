@@ -54,7 +54,7 @@ function orderRow(over: Record<string, unknown> = {}) {
     address: "Москва, Тверская 1",
     comment: null,
     total: 1180,
-    pet: null,
+    petName: null,
     items: [
       {
         slug: "bandana-kletka",
@@ -251,8 +251,10 @@ describe("OrdersService.create — питомец", () => {
     expect(petUpsert).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId_name: { userId: "u1", name: "Микки" } } }),
     );
-    const args = create.mock.calls[0]?.[0] as { data: { petId: string | null } };
+    const args = create.mock.calls[0]?.[0] as { data: { petId: string | null; petName: string | null } };
     expect(args.data.petId).toBe("pet1");
+    // И слепком в самом заказе — переименование питомца его не тронет.
+    expect(args.data.petName).toBe("Микки");
   });
 
   it("второй заказ на ту же кличку не плодит питомцев", async () => {
@@ -314,7 +316,7 @@ describe("OrdersService.list", () => {
   });
 
   it("не выдумывает необязательных полей", async () => {
-    orderFindMany.mockResolvedValue([orderRow({ address: null, comment: null, pet: null })]);
+    orderFindMany.mockResolvedValue([orderRow({ address: null, comment: null, petName: null })]);
     const [order] = await service.list("u1");
 
     expect(order).not.toHaveProperty("address");
@@ -322,10 +324,18 @@ describe("OrdersService.list", () => {
     expect(order).not.toHaveProperty("petName");
   });
 
-  it("отдаёт кличку питомца, когда она есть", async () => {
-    orderFindMany.mockResolvedValue([orderRow({ pet: { name: "Микки" } })]);
+  /**
+   * Кличка читается из самого заказа, а не через связь с питомцем: в профиле
+   * её можно переименовать и удалить, а заказ обязан показывать то, что было
+   * при оформлении.
+   */
+  it("отдаёт кличку питомца слепком из самого заказа", async () => {
+    orderFindMany.mockResolvedValue([orderRow({ petName: "Микки" })]);
     const [order] = await service.list("u1");
 
     expect(order?.petName).toBe("Микки");
+    // Связь для этого не запрашивается вовсе.
+    const args = orderFindMany.mock.calls[0]?.[0] as { include?: Record<string, unknown> };
+    expect(args.include).not.toHaveProperty("pet");
   });
 });

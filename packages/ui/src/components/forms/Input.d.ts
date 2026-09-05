@@ -14,6 +14,13 @@ export interface InputProps {
   iconLeft?: React.ReactNode;
   iconRight?: React.ReactNode;
   disabled?: boolean;
+  /**
+   * Экранная клавиатура на мобильном. `inputMode="numeric"` — числовая, но без
+   * стрелок и колеса мыши, которые тянет за собой `type="number"`.
+   * Компонент и так прокидывает остаток пропсов на поле; здесь это записано в
+   * контракт, чтобы не приходилось приводить типы на каждом вызове.
+   */
+  inputMode?: "text" | "numeric" | "decimal" | "tel" | "email" | "url" | "search";
   /** Render a textarea instead. */
   multiline?: boolean;
   rows?: number;

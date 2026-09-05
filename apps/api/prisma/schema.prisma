@@ -35,18 +35,36 @@ model User {
   orders Order[]
 }
 
-/// Питомец — получатель заказа.
+/// Питомец — получатель заказа и будущий герой социальных фич.
 ///
 /// Заведён отдельной сущностью, а не полем заказа, по `ARCHITECTURE.md`:
 /// позже на Pet завяжутся поиск компаньонов и вязка, и мигрировать туда
-/// заказы будет дорого, а сделать сразу — дёшево. Пока у него только кличка:
-/// экрана профиля питомца ещё нет, кличку спрашивают при оформлении.
+/// заказы будет дорого, а сделать сразу — дёшево.
+///
+/// Всё, кроме клички, необязательно: питомец заводится и при оформлении
+/// заказа, где спрашивают только кличку, и в профиле, где мерки можно
+/// заполнить когда угодно. Требовать породу и обхваты значило бы ломать
+/// оформление ради полноты анкеты.
 model Pet {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+  breed  String?
+  /// Размер по сетке магазина — тот же справочник, что у `ProductSize.size`.
+  size   String?
+
+  /// Мерки питомца в целых сантиметрах.
+  ///
+  /// Числом, в отличие от `ProductSize.chestCm`: там диапазон размера («34–40»),
+  /// а здесь одна собака с одним обхватом, и по нему как раз считают, в какой
+  /// диапазон она попадает.
+  chestCm Int?
+  neckCm  Int?
+  backCm  Int?
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   orders Order[]
 
@@ -160,6 +178,14 @@ model Order {
   user   User    @relation(fields: [userId], references: [id])
   petId  String?
   pet    Pet?    @relation(fields: [petId], references: [id])
+  /// Кличка на момент заказа — слепок, как `OrderItem.title` и `.price`.
+  ///
+  /// Раньше кличка читалась через связь, и профиль питомца это ломал бы:
+  /// переименовать питомца значило переписать все прошлые заказы, а удалить —
+  /// обнулить `petId` (для необязательной связи Prisma по умолчанию делает
+  /// `SetNull`) и потерять кличку насовсем. В заказе должно остаться то, что
+  /// было при оформлении.
+  petName String?
 
   status OrderStatus @default(NEW)
 

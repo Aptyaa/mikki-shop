@@ -31,7 +31,7 @@ type OrderRow = {
   address: string | null;
   comment: string | null;
   total: number;
-  pet: { name: string } | null;
+  petName: string | null;
   items: ItemRow[];
 };
 
@@ -56,14 +56,20 @@ function toOrder(row: OrderRow): Order {
     delivery: row.delivery as DeliveryMethod,
     ...(row.address ? { address: row.address } : {}),
     ...(row.comment ? { comment: row.comment } : {}),
-    ...(row.pet ? { petName: row.pet.name } : {}),
+    ...(row.petName ? { petName: row.petName } : {}),
     total: row.total,
     lines: row.items.map(toLine),
   };
 }
 
-/** Что вернуть покупателю, включая причину отказа. */
-const INCLUDE = { items: true, pet: { select: { name: true } } } as const;
+/**
+ * Что вернуть покупателю.
+ *
+ * Кличка берётся из самого заказа, а не через связь с питомцем: в профиле её
+ * можно переименовать и удалить, а заказ обязан показывать то, что было при
+ * оформлении, — как название и цена в строке.
+ */
+const INCLUDE = { items: true } as const;
 
 @Injectable()
 export class OrdersService {
@@ -142,6 +148,7 @@ export class OrdersService {
         data: {
           userId,
           petId,
+          petName: draft.petName ?? null,
           customerName: draft.customerName,
           phone: draft.phone,
           delivery: draft.delivery,
@@ -194,8 +201,9 @@ export class OrdersService {
   /**
    * Питомец по кличке: заводится при первом заказе, дальше переиспользуется.
    *
-   * Экрана профиля питомца ещё нет, кличку спрашивают на оформлении — но
-   * сущность заводится сразу, как требует `ARCHITECTURE.md`.
+   * Кличку спрашивают и на оформлении, и в профиле — сюда попадает та, что
+   * ввели в форме заказа. Совпала с уже заведённой — это тот же питомец, и
+   * заказ прицепится к его карточке с породой и мерками.
    */
   private async petId(userId: string, name: string): Promise<string> {
     const pet = await this.prisma.pet.upsert({

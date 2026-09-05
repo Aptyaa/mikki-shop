@@ -20,7 +20,8 @@ export type Route =
   | { name: "product"; slug: string }
   | { name: "cart" }
   | { name: "checkout" }
-  | { name: "orders" };
+  | { name: "orders" }
+  | { name: "profile" };
 
 const PRODUCT = /^#\/product\/([^/?#]+)/;
 
@@ -45,6 +46,7 @@ export function parseRoute(hash: string): Route {
   if (/^#\/cart\b/.test(hash)) return { name: "cart" };
   if (/^#\/checkout\b/.test(hash)) return { name: "checkout" };
   if (/^#\/orders\b/.test(hash)) return { name: "orders" };
+  if (/^#\/profile\b/.test(hash)) return { name: "profile" };
 
   const match = PRODUCT.exec(hash);
   if (!match?.[1]) return { name: "home" };
@@ -66,6 +68,7 @@ export function routeToHash(route: Route): string {
   if (route.name === "cart") return "#/cart";
   if (route.name === "checkout") return "#/checkout";
   if (route.name === "orders") return "#/orders";
+  if (route.name === "profile") return "#/profile";
   return "#/";
 }
 

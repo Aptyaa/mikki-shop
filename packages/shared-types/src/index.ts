@@ -183,6 +183,43 @@ export interface AuthSession {
   user: AuthUser;
 }
 
+/**
+ * Питомец покупателя.
+ *
+ * Всё, кроме клички, необязательно: питомец заводится и при оформлении заказа,
+ * где спрашивают только её. Профиль дозаполняется когда угодно и не мешает
+ * купить свитер прямо сейчас.
+ */
+export interface Pet {
+  id: string;
+  name: string;
+  breed?: string;
+  /** Размер по сетке магазина — тот же справочник, что и в каталоге. */
+  size?: CatalogSize;
+  /** Мерки в целых сантиметрах. Одна собака — одно число, не диапазон. */
+  chestCm?: number;
+  neckCm?: number;
+  backCm?: number;
+}
+
+/** Что покупатель заполняет в карточке питомца. */
+export interface PetDraft {
+  name: string;
+  breed?: string;
+  size?: CatalogSize;
+  chestCm?: number;
+  neckCm?: number;
+  backCm?: number;
+}
+
+/**
+ * Почему питомца не удалось сохранить.
+ *
+ * Отдельным кодом, а не текстом: `duplicate-name` экран показывает у поля
+ * клички, а не общей плашкой сверху.
+ */
+export type PetFailure = "invalid" | "duplicate-name" | "not-found";
+
 /** Способ получения заказа. */
 export type DeliveryMethod = "courier" | "pickup" | "post";
 
