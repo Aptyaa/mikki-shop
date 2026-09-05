@@ -11,6 +11,7 @@ import {
   Skeleton,
 } from "@mikki-shop/ui";
 import { fetchCartPreview } from "../api/catalog";
+import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
 import { cartKey, toCartInput, useCart } from "../lib/cart";
 import { plural } from "../lib/plural";
@@ -109,7 +110,7 @@ export function CartScreen() {
       />
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        padding: "var(--sp-5) var(--gutter) var(--safe-scroll-bottom)" }}>
+        padding: "var(--sp-5) var(--gutter) var(--sp-6)" }}>
         {cart.length === 0 ? (
           <EmptyState
             title="В корзине пока пусто"
@@ -196,6 +197,8 @@ export function CartScreen() {
           </>
         )}
       </div>
+
+      <AppTabs active="cart" />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  Badge,
   Band,
   Button,
   Divider,
@@ -19,9 +18,8 @@ import {
 } from "@mikki-shop/ui";
 import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
+import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
-import { useAuth } from "../lib/auth";
-import { useCart } from "../lib/cart";
 import { goBack, navigate } from "../lib/route";
 import { plural } from "../lib/plural";
 
@@ -71,12 +69,6 @@ export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [favourites, setFavourites] = useState<ReadonlySet<string>>(new Set<string>());
-
-  const cartCount = useCart((state) =>
-    state.items.reduce((sum, item) => sum + item.quantity, 0),
-  );
-  // Ссылка на заказы только у вошедших: гостю она ведёт в пустой экран.
-  const signedIn = useAuth((state) => state.token !== null);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search.trim()), 300);
@@ -159,23 +151,6 @@ export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
             <IconButton label="Фильтры" onClick={() => setFiltersOpen(true)}>
               <Icon name="sliders-horizontal" />
             </IconButton>
-            {signedIn && (
-              <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
-                <Icon name="package" />
-              </IconButton>
-            )}
-            <IconButton
-              label="Корзина"
-              onClick={() => navigate({ name: "cart" })}
-              style={{ position: "relative" }}
-            >
-              <Icon name="shopping-bag" />
-              {cartCount > 0 && (
-                <span style={{ position: "absolute", top: 2, right: 2 }}>
-                  <Badge count={cartCount} />
-                </span>
-              )}
-            </IconButton>
           </div>
         }
       />
@@ -229,7 +204,7 @@ export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        padding: "var(--sp-5) var(--gutter) var(--safe-scroll-bottom)" }}>
+        padding: "var(--sp-5) var(--gutter) var(--sp-6)" }}>
         {productsQuery.isError ? (
           <Notice tone="danger" title="Каталог не загрузился">
             Проверьте соединение и попробуйте снова.
@@ -325,6 +300,8 @@ export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
           ))}
         </div>
       </Sheet>
+
+      <AppTabs active="catalog" />
     </div>
   );
 }

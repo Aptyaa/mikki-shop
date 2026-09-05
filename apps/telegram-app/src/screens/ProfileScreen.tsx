@@ -17,6 +17,7 @@ import {
 } from "@mikki-shop/ui";
 import type { CatalogSize, Pet, PetDraft } from "@mikki-shop/shared-types";
 import { HttpError, createPet, deletePet, fetchPets, updatePet } from "../api/catalog";
+import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
 import { useAuth } from "../lib/auth";
 import { plural } from "../lib/plural";
@@ -231,7 +232,7 @@ export function ProfileScreen() {
       <ScreenBar title="Профиль" onBack={goBack} />
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        padding: "var(--sp-5) var(--gutter) var(--safe-scroll-bottom)" }}>
+        padding: "var(--sp-5) var(--gutter) var(--sp-6)" }}>
         {!signedIn ? (
           <EmptyState
             title="Профиль виден из Telegram"
@@ -472,6 +473,8 @@ export function ProfileScreen() {
           )}
         </div>
       </Sheet>
+
+      <AppTabs active="profile" />
     </div>
   );
 }

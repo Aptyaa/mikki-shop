@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AppBar,
-  Badge,
   Band,
   Button,
   Card,
@@ -10,7 +8,6 @@ import {
   Divider,
   Dot,
   Icon,
-  IconButton,
   Logo,
   Notice,
   ProductCard,
@@ -18,8 +15,8 @@ import {
   Skeleton,
 } from "@mikki-shop/ui";
 import { fetchCategories, fetchProducts } from "../api/catalog";
+import { AppTabs } from "../components/AppTabs";
 import { useAuth } from "../lib/auth";
-import { useCart } from "../lib/cart";
 import { introCollapsed, rememberIntroCollapsed } from "../lib/onboarding";
 import { plural } from "../lib/plural";
 import { navigate } from "../lib/route";
@@ -80,10 +77,8 @@ export function HomeScreen() {
   // хранилище на каждый рендер незачем, менять его отсюда больше некому.
   const [collapsed, setCollapsed] = useState(introCollapsed);
 
-  const cartCount = useCart((state) =>
-    state.items.reduce((sum, item) => sum + item.quantity, 0),
-  );
-  const signedIn = useAuth((state) => state.token !== null);
+  // Счётчик корзины и факт входа экрану больше не нужны: и то и другое живёт
+  // в нижнем баре. Имя нужно — им экран здоровается.
   const firstName = useAuth((state) => state.user?.firstName);
 
   const categoriesQuery = useQuery({
@@ -114,39 +109,12 @@ export function HomeScreen() {
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
       {/* Шапка без `ScreenBar`: тот ставит знак Микки в центр полосы, а здесь
           маскот и так стоит в лого под ней — два Микки в один экран не лезут. */}
-      <AppBar
-        right={
-          <div style={{ display: "flex", gap: "var(--sp-2)" }}>
-            {/* Профиль и заказы только вошедшим: гостю они ведут в экран,
-                который умеет сказать лишь «откройте магазин в Telegram». */}
-            {signedIn && (
-              <>
-                <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
-                  <Icon name="package" />
-                </IconButton>
-                <IconButton label="Профиль" onClick={() => navigate({ name: "profile" })}>
-                  <Icon name="user" />
-                </IconButton>
-              </>
-            )}
-            <IconButton
-              label="Корзина"
-              onClick={() => navigate({ name: "cart" })}
-              style={{ position: "relative" }}
-            >
-              <Icon name="shopping-bag" />
-              {cartCount > 0 && (
-                <span style={{ position: "absolute", top: 2, right: 2 }}>
-                  <Badge count={cartCount} />
-                </span>
-              )}
-            </IconButton>
-          </div>
-        }
-      />
-
+      {/* Шапки нет вовсе. Корзина, профиль и каталог переехали в нижний бар,
+          заголовок экрану не нужен — под ним сразу знак магазина, — и пустая
+          полоса на 56px осталась бы просто отступом с рамкой. Сверху и так
+          рисует свою шапку сам Telegram. */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        padding: "var(--sp-7) var(--gutter) var(--safe-scroll-bottom)" }}>
+        padding: "var(--sp-7) var(--gutter) var(--sp-6)" }}>
         {/* Витринная компоновка знака: маскот сидит на вордмарке. Она просит
             вертикального места и спокойного фона — ровно то, что здесь есть,
             и ровно там, где дизайн-система разрешает её ставить. */}
@@ -321,6 +289,8 @@ export function HomeScreen() {
           )}
         </section>
       </div>
+
+      <AppTabs active="home" />
     </div>
   );
 }
