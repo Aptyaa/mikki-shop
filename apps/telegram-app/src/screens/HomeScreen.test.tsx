@@ -151,7 +151,7 @@ describe("HomeScreen — онбординг", () => {
   it("первому входу показывает шаги раскрытыми", () => {
     renderScreen();
 
-    expect(screen.getByText("Снимите мерки")).toBeTruthy();
+    expect(screen.getByText("Снимите мерки")).toBeVisible();
     expect(screen.getByRole("button", { name: /Как это работает/ })).toHaveAttribute(
       "aria-expanded",
       "true",
@@ -169,25 +169,25 @@ describe("HomeScreen — онбординг", () => {
     renderScreen();
 
     fireEvent.click(screen.getByRole("button", { name: /Как это работает/ }));
-    expect(screen.queryByText("Снимите мерки")).toBeNull();
+    expect(screen.getByText("Снимите мерки")).not.toBeVisible();
 
     // Второй запуск приложения: экран смонтирован заново, хранилище то же.
     cleanup();
     renderScreen();
-    expect(screen.queryByText("Снимите мерки")).toBeNull();
+    expect(screen.getByText("Снимите мерки")).not.toBeVisible();
   });
 
   it("разворачивается обратно и это тоже запоминает", () => {
     window.localStorage.setItem("mikki-intro-collapsed", "1");
     renderScreen();
-    expect(screen.queryByText("Снимите мерки")).toBeNull();
+    expect(screen.getByText("Снимите мерки")).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: /Как это работает/ }));
-    expect(screen.getByText("Снимите мерки")).toBeTruthy();
+    expect(screen.getByText("Снимите мерки")).toBeVisible();
 
     cleanup();
     renderScreen();
-    expect(screen.getByText("Снимите мерки")).toBeTruthy();
+    expect(screen.getByText("Снимите мерки")).toBeVisible();
   });
 });
 

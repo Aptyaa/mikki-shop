@@ -44,10 +44,22 @@ export function App() {
   const lastSlug = useRef<string | undefined>(undefined);
   if (route.name === "product") lastSlug.current = route.slug;
 
-  // Каталог монтируется не раньше первого захода в него: на старте он тянул бы
-  // свою страницу выдачи в фоне за экраном, который её не показывает.
+  /**
+   * Каталог монтируется не раньше первого захода в него: на старте он тянул бы
+   * свою страницу выдачи в фоне за экраном, который её не показывает.
+   *
+   * Ключ меняет только категория, явно названная в адресе, — то есть переход
+   * со стартового экрана. Просто «в каталог» (`#/catalog` без категории —
+   * так возвращаются из корзины, заказов, чекаута и карточки «товара нет»)
+   * ключ не трогает: иначе возврат ронял бы у каталога поиск, фильтры,
+   * подгруженные страницы и прокрутку — ровно то, ради чего он и оставлен
+   * смонтированным.
+   */
   const lastCatalog = useRef<string | null>(null);
-  if (route.name === "catalog") lastCatalog.current = route.category ?? ALL;
+  if (route.name === "catalog") {
+    if (route.category !== undefined) lastCatalog.current = route.category;
+    else lastCatalog.current ??= ALL;
+  }
 
   const slug = lastSlug.current;
   const catalogKey = lastCatalog.current;

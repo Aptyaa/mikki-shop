@@ -117,9 +117,6 @@ export function HomeScreen() {
       <AppBar
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
-            <IconButton label="Поиск по каталогу" onClick={() => navigate({ name: "catalog" })}>
-              <Icon name="search" />
-            </IconButton>
             {signedIn && (
               <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
                 <Icon name="package" />
@@ -207,8 +204,10 @@ export function HomeScreen() {
               />
             </button>
 
-            {!collapsed && (
-              <div id="ms-intro-steps" style={{ marginTop: "var(--sp-5)" }}>
+            {/* Область рисуется всегда и прячется атрибутом `hidden`: это
+                штатный шаблон раскрывающегося блока, и `aria-controls` кнопки
+                тогда указывает на существующий узел в обоих состояниях. */}
+            <div id="ms-intro-steps" hidden={collapsed} style={{ marginTop: "var(--sp-5)" }}>
                 {STEPS.map((step, index) => (
                   <div key={step.title}>
                     {index > 0 && <Divider style={{ margin: "var(--sp-5) 0" }} />}
@@ -235,8 +234,7 @@ export function HomeScreen() {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+            </div>
           </Card>
         </section>
 

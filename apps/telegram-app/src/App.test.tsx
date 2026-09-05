@@ -141,6 +141,32 @@ describe("App — роутинг", () => {
     expect(vi.mocked(fetchProducts).mock.calls.some(([query]) => query.sort !== "new")).toBe(true);
   });
 
+  /**
+   * Каталог оставлен смонтированным ради поиска, фильтров, подгруженных
+   * страниц и прокрутки. Из корзины, заказов, чекаута и карточки «товара
+   * нет» возвращаются на `#/catalog` без категории — если бы такой переход
+   * менял `key`, весь смысл этого пропадал бы.
+   */
+  it("возврат «в каталог» без категории не сбрасывает состояние экрана", async () => {
+    renderApp();
+    await screen.findByText("Одежда для маленьких собак");
+
+    act(() => navigate({ name: "catalog", category: "rain" }));
+    await screen.findByText("Каталог");
+
+    // Что-нибудь, что живёт только в состоянии экрана каталога.
+    act(() => {
+      screen.getByRole("button", { name: "Поиск" }).click();
+    });
+    expect(screen.getByPlaceholderText("Свитер, дождевик, бандана")).toBeVisible();
+
+    act(() => navigate({ name: "cart" }));
+    await screen.findByText("Корзина");
+
+    act(() => navigate({ name: "catalog" }, { replace: true }));
+    expect(screen.getByPlaceholderText("Свитер, дождевик, бандана")).toBeVisible();
+  });
+
   it("открывает каталог на категории, выбранной на старте", async () => {
     renderApp();
     await screen.findByText("Одежда для маленьких собак");
