@@ -40,8 +40,7 @@ describe("AppTabs", () => {
 
   /**
    * Иначе каждое касание своей же вкладки клало бы в историю запись, из
-   * которой «назад» ведёт ровно туда же, — и выйти из приложения кнопкой
-   * «назад» стало бы делом десяти нажатий.
+   * которой «назад» ведёт ровно туда же.
    */
   it("нажатие по своей вкладке ничего не делает", () => {
     render(<AppTabs active="catalog" />);
@@ -51,6 +50,25 @@ describe("AppTabs", () => {
     fireEvent.click(tab("Каталог"));
 
     expect(window.location.hash).toBe("#/catalog");
+    expect(window.history.length).toBe(before);
+  });
+
+  /**
+   * Вкладки — это один уровень, а не путь вглубь. Копили бы историю — «назад»
+   * с профиля вело бы в корзину, оттуда в каталог, и так столько раз, сколько
+   * человек трогал бар, вместо того чтобы закрыть приложение.
+   */
+  it("переключение вкладок не копит историю", () => {
+    const { rerender } = render(<AppTabs active="home" />);
+    const before = window.history.length;
+
+    fireEvent.click(tab("Каталог"));
+    rerender(<AppTabs active="catalog" />);
+    fireEvent.click(tab("Корзина"));
+    rerender(<AppTabs active="cart" />);
+    fireEvent.click(tab("Профиль"));
+
+    expect(window.location.hash).toBe("#/profile");
     expect(window.history.length).toBe(before);
   });
 
