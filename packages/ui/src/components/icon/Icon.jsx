@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -36,6 +37,7 @@ import {
 const GLYPHS = {
   "alert-triangle": TriangleAlert,
   check: Check,
+  "chevron-down": ChevronDown,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   "credit-card": CreditCard,

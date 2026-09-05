@@ -5,12 +5,18 @@ import { useSyncExternalStore } from "react";
  * History API: Mini App отдаётся статикой, и путь `/product/...` при
  * перезагрузке ушёл бы на сервер, которого под этим адресом нет.
  *
- * Своя реализация вместо роутера-библиотеки: экранов два, а хэш даёт то, ради
- * чего роутер и берут, — рабочую кнопку «назад» в браузере и в вебвью
+ * Своя реализация вместо роутера-библиотеки: экранов немного, а хэш даёт то,
+ * ради чего роутер и берут, — рабочую кнопку «назад» в браузере и в вебвью
  * Telegram, плюс ссылку на конкретный товар, которую можно переслать.
+ *
+ * Корень — стартовый экран, не каталог: приложение открывается витриной, с
+ * которой в каталог уходят по кнопке. До появления `home` каталог стоял на
+ * `#/`, поэтому у него теперь есть собственный адрес.
  */
 export type Route =
-  | { name: "catalog" }
+  | { name: "home" }
+  /** `category` — ключ категории, выбранной снаружи (со стартового экрана). */
+  | { name: "catalog"; category?: string }
   | { name: "product"; slug: string }
   | { name: "cart" }
   | { name: "checkout" }
@@ -18,23 +24,45 @@ export type Route =
 
 const PRODUCT = /^#\/product\/([^/?#]+)/;
 
+/**
+ * Параметры после `?` в хэше.
+ *
+ * `URLSearchParams` разбирает битый percent-encoding молча, отдавая сырой
+ * текст, — падать на правленом руками адресе здесь нечему.
+ */
+function queryOf(hash: string): URLSearchParams {
+  const start = hash.indexOf("?");
+  return new URLSearchParams(start === -1 ? "" : hash.slice(start + 1));
+}
+
 export function parseRoute(hash: string): Route {
+  // Каталог проверяется до корзины: `\b` после `cart` не даст «#/catalog»
+  // сойти за корзину, но порядок делает это очевидным и без разбора регулярки.
+  if (/^#\/catalog\b/.test(hash)) {
+    const category = queryOf(hash).get("category")?.trim();
+    return category ? { name: "catalog", category } : { name: "catalog" };
+  }
   if (/^#\/cart\b/.test(hash)) return { name: "cart" };
   if (/^#\/checkout\b/.test(hash)) return { name: "checkout" };
   if (/^#\/orders\b/.test(hash)) return { name: "orders" };
 
   const match = PRODUCT.exec(hash);
-  if (!match?.[1]) return { name: "catalog" };
+  if (!match?.[1]) return { name: "home" };
   try {
     return { name: "product", slug: decodeURIComponent(match[1]) };
   } catch {
     // Битый percent-encoding в адресной строке — не повод падать белым экраном.
-    return { name: "catalog" };
+    return { name: "home" };
   }
 }
 
 export function routeToHash(route: Route): string {
   if (route.name === "product") return `#/product/${encodeURIComponent(route.slug)}`;
+  if (route.name === "catalog") {
+    return route.category
+      ? `#/catalog?category=${encodeURIComponent(route.category)}`
+      : "#/catalog";
+  }
   if (route.name === "cart") return "#/cart";
   if (route.name === "checkout") return "#/checkout";
   if (route.name === "orders") return "#/orders";
@@ -90,14 +118,14 @@ export function navigate(route: Route, options: { replace?: boolean } = {}): voi
 }
 
 /**
- * Назад. Если текущая запись не наша — карточку открыли по прямой ссылке, и
+ * Назад. Если текущая запись не наша — экран открыли по прямой ссылке, и
  * `history.back()` либо ничего не сделает, либо уведёт из приложения совсем.
- * Тогда просто становимся на каталог.
+ * Тогда просто становимся на стартовый экран.
  */
 export function goBack(): void {
   if (pushedByUs()) {
     window.history.back();
     return;
   }
-  navigate({ name: "catalog" }, { replace: true });
+  navigate({ name: "home" }, { replace: true });
 }
