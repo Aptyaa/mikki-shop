@@ -58,13 +58,19 @@ function toForm(pet: Pet): PetForm {
  * Форма → черновик для бэкенда.
  *
  * Пустая строка выкидывается, а не едет нулём: «не мерил» и «ноль сантиметров»
- * это разные вещи. Настоящая проверка мерок — на сервере, здесь только разбор:
- * дублировать её на клиенте значит завести два расходящихся набора правил.
+ * это разные вещи. Заполненная едет **как есть**, строкой: проверяет мерки
+ * сервер, он же знает границы, и дублировать это на клиенте значит завести
+ * два расходящихся набора правил.
+ *
+ * Приводить к числу здесь нельзя было бы даже при желании: `Number("38-40")`
+ * даёт `NaN`, `JSON.stringify` превращает его в `null`, а `null` сервер читает
+ * как «мерку стёрли» — и вместо отказа опечатка молча затирала бы сохранённый
+ * обхват.
  */
 function toDraft(form: PetForm): PetDraft {
   const cm = (value: string) => {
     const trimmed = value.trim();
-    return trimmed ? Number(trimmed.replace(",", ".")) : undefined;
+    return trimmed ? trimmed : undefined;
   };
 
   const breed = form.breed.trim();
@@ -198,8 +204,17 @@ export function ProfileScreen() {
     setEditing({ pet });
   };
 
-  const field = (key: keyof PetForm) => (event: { target: { value: string } }) =>
+  /**
+   * Правка поля.
+   *
+   * Заодно снимает отказ прошлой попытки: иначе «питомец с такой кличкой уже
+   * есть» продолжало бы гореть красным под полем, пока владелец набирает
+   * другую, свободную кличку.
+   */
+  const field = (key: keyof PetForm) => (event: { target: { value: string } }) => {
+    if (save.isError) save.reset();
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  };
 
   const list = pets.data ?? [];
   const busy = save.isPending || remove.isPending;

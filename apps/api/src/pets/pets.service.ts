@@ -1,5 +1,19 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { CatalogSize, Pet, PetDraft } from "@mikki-shop/shared-types";
+
+/**
+ * Разобранный черновик: мерки уже числа.
+ *
+ * В `PetDraft` они `number | string`, потому что из формы приезжает набранное
+ * владельцем, включая «38,4». Приводит и проверяет их контроллер, и до сервиса
+ * доходит только то, что прошло проверку, — тип это и фиксирует, чтобы
+ * непроверенная строка не смогла доехать до базы мимо разбора.
+ */
+export type PetInput = Omit<PetDraft, "chestCm" | "neckCm" | "backCm"> & {
+  chestCm?: number;
+  neckCm?: number;
+  backCm?: number;
+};
 import { PrismaService } from "../prisma/prisma.service";
 import { MAX_PETS } from "./pets.constants";
 
@@ -48,7 +62,7 @@ function toPet(row: PetRow): Pet {
  * целиком, и стёртая владельцем порода должна стереться и в базе. Иначе
  * очистить однажды заполненное поле было бы нечем.
  */
-function toData(draft: PetDraft) {
+function toData(draft: PetInput) {
   return {
     name: draft.name,
     breed: draft.breed ?? null,
@@ -78,7 +92,7 @@ export class PetsService {
     return rows.map(toPet);
   }
 
-  async create(userId: string, draft: PetDraft): Promise<Pet> {
+  async create(userId: string, draft: PetInput): Promise<Pet> {
     const count = await this.prisma.pet.count({ where: { userId } });
     if (count >= MAX_PETS) {
       throw new ConflictException({
@@ -107,7 +121,7 @@ export class PetsService {
    * проверкой и записью осталась бы щель. Здесь чужой питомец просто не
    * попадает под условие, и в ответе честный ноль изменённых строк.
    */
-  async update(userId: string, id: string, draft: PetDraft): Promise<Pet> {
+  async update(userId: string, id: string, draft: PetInput): Promise<Pet> {
     try {
       const { count } = await this.prisma.pet.updateMany({
         where: { id, userId },

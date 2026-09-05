@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PetDraft } from "@mikki-shop/shared-types";
 import type { PrismaService } from "../prisma/prisma.service";
 import { MAX_PETS } from "./pets.constants";
-import { PetsService } from "./pets.service";
+import { PetsService, type PetInput } from "./pets.service";
 
 type Args = Record<string, unknown>;
 
@@ -32,7 +31,7 @@ let updateMany: ReturnType<typeof vi.fn>;
 let deleteMany: ReturnType<typeof vi.fn>;
 let service: PetsService;
 
-const draft = (over: Partial<PetDraft> = {}): PetDraft => ({ name: "Микки", ...over });
+const draft = (over: Partial<PetInput> = {}): PetInput => ({ name: "Микки", ...over });
 
 beforeEach(() => {
   findMany = vi.fn(async (_args: Args) => [row()]);

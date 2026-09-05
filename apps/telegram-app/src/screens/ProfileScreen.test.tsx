@@ -175,7 +175,8 @@ describe("ProfileScreen — новая карточка", () => {
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
-    expect(lastDraft()).toEqual({ name: "Соня", breed: "Шпиц", size: "M", chestCm: 40 });
+    // Мерка уезжает строкой, как её набрали: приводит и проверяет сервер.
+    expect(lastDraft()).toEqual({ name: "Соня", breed: "Шпиц", size: "M", chestCm: "40" });
     await waitFor(() => expect(screen.queryByText("Новый питомец")).toBeNull());
   });
 
@@ -190,6 +191,26 @@ describe("ProfileScreen — новая карточка", () => {
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(lastDraft()).toEqual({ name: "Соня" });
+  });
+
+  /**
+   * Регрессия: раньше мерка приводилась к числу здесь, и `Number("38-40")`
+   * давал `NaN`, который `JSON.stringify` превращает в `null`. Сервер читает
+   * `null` как «мерку стёрли» — опечатка молча затирала сохранённый обхват
+   * вместо того, чтобы получить отказ.
+   */
+  it("невнятную мерку отправляет как есть, а не превращает в null", async () => {
+    signIn();
+    renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: "добавить" }));
+
+    type("Кличка", "Соня");
+    type("Грудь", "38-40");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(lastDraft().chestCm).toBe("38-40");
+    expect(JSON.parse(JSON.stringify(lastDraft())).chestCm).not.toBeNull();
   });
 
   it("занятую кличку показывает у поля клички, а не общей плашкой", async () => {
@@ -207,6 +228,26 @@ describe("ProfileScreen — новая карточка", () => {
     expect(screen.queryByText("Не сохранилось")).toBeNull();
     // Лист остаётся открытым: кличку ещё надо поправить.
     expect(screen.getByRole("button", { name: "Сохранить" })).toBeTruthy();
+  });
+
+  // Иначе «кличка занята» горела бы красным, пока владелец набирает другую.
+  it("снимает отказ по кличке, как только её начали править", async () => {
+    signIn();
+    create.mockRejectedValue(
+      new HttpError(409, "conflict", "duplicate-name", "Питомец с такой кличкой уже есть"),
+    );
+    renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: "добавить" }));
+
+    type("Кличка", "Микки");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(await screen.findByText("Питомец с такой кличкой уже есть")).toBeTruthy();
+
+    // Подпись регуляркой: пока отказ висит, он входит в доступное имя поля —
+    // так и задумано, ошибку читают вместе с ним.
+    type(/Кличка/, "Микки 2");
+
+    expect(screen.queryByText("Питомец с такой кличкой уже есть")).toBeNull();
   });
 
   // Сервер знает, какая именно мерка не подошла, — его текст и показываем.

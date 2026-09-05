@@ -1,10 +1,10 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
-import type { CatalogSize, Pet, PetDraft } from "@mikki-shop/shared-types";
+import type { CatalogSize, Pet } from "@mikki-shop/shared-types";
 import { CATALOG_SIZES } from "../catalog/catalog.constants";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { JwtPayload } from "../auth/auth.service";
 import { MAX_BREED, MAX_CM, MAX_PET_NAME, MIN_CM } from "./pets.constants";
-import { PetsService } from "./pets.service";
+import { PetsService, type PetInput } from "./pets.service";
 
 /** Тело запроса до разбора: пришло от клиента, доверия к нему нет. */
 interface PetBody {
@@ -58,7 +58,7 @@ function cm(value: unknown, field: string): number | undefined {
  * Как и на оформлении заказа, на плохих данных отвечаем ошибкой, а не молча
  * чистим вход: это форма, и владельцу надо знать, что именно поправить.
  */
-export function toPetDraft(body: PetBody): PetDraft {
+export function toPetDraft(body: PetBody): PetInput {
   const name = text(body?.name, MAX_PET_NAME);
   if (!name) {
     throw new BadRequestException({ reason: "invalid", message: "Укажите кличку" });
@@ -69,12 +69,19 @@ export function toPetDraft(body: PetBody): PetDraft {
   const neckCm = cm(body?.neckCm, "Обхват шеи");
   const backCm = cm(body?.backCm, "Длина спины");
 
+  // Пустой размер — «не выбран», и он проходит: размер необязателен, снять
+  // его владелец вправе. А вот присланное значение не из сетки отвергается,
+  // а не отбрасывается: тело PATCH заменяет карточку целиком, и «молча
+  // пропустить» здесь означало бы «стереть сохранённый размер».
+  const size = body?.size;
+  if (size !== undefined && size !== null && size !== "" && !isSize(size)) {
+    throw new BadRequestException({ reason: "invalid", message: "Неизвестный размер" });
+  }
+
   return {
     name,
     ...(breed ? { breed } : {}),
-    // Размер не из сетки — это не ошибка формы, а мусор в запросе: молча
-    // отбрасываем, как отбрасываются неизвестные фильтры каталога.
-    ...(isSize(body?.size) ? { size: body.size } : {}),
+    ...(isSize(size) ? { size } : {}),
     ...(chestCm !== undefined ? { chestCm } : {}),
     ...(neckCm !== undefined ? { neckCm } : {}),
     ...(backCm !== undefined ? { backCm } : {}),

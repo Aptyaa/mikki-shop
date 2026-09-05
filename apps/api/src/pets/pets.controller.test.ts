@@ -39,11 +39,20 @@ describe("toPetDraft — размер", () => {
     expect(toPetDraft({ name: "Микки", size: "S" }).size).toBe("S");
   });
 
-  // Размер не из сетки — не ошибка формы, а мусор в запросе: его выбирают
-  // кнопками, промахнуться нельзя.
-  it("размер не из сетки молча отбрасывает", () => {
-    expect(toPetDraft({ name: "Микки", size: "XXXL" })).not.toHaveProperty("size");
-    expect(toPetDraft({ name: "Микки", size: 3 })).not.toHaveProperty("size");
+  it("пустой размер — это «не выбран», и он проходит", () => {
+    expect(toPetDraft({ name: "Микки" })).not.toHaveProperty("size");
+    expect(toPetDraft({ name: "Микки", size: "" })).not.toHaveProperty("size");
+    expect(toPetDraft({ name: "Микки", size: null })).not.toHaveProperty("size");
+  });
+
+  /**
+   * Молча отбросить нельзя: тело PATCH заменяет карточку целиком, и
+   * пропущенный размер means «стереть сохранённый». Владелец при этом ничего
+   * не стирал — он прислал размер, просто негодный.
+   */
+  it("размер не из сетки отвергает, а не стирает молча", () => {
+    expect(reasonOf(() => toPetDraft({ name: "Микки", size: "XXXL" }))).toBe("invalid");
+    expect(reasonOf(() => toPetDraft({ name: "Микки", size: 3 }))).toBe("invalid");
   });
 });
 

@@ -202,14 +202,23 @@ export interface Pet {
   backCm?: number;
 }
 
-/** Что покупатель заполняет в карточке питомца. */
+/**
+ * Что покупатель заполняет в карточке питомца.
+ *
+ * Мерки — `number | string`: из формы приезжает ровно то, что набрали, включая
+ * «38,4» и «примерно 30». Разбирает и проверяет их бэкенд, он же единственный
+ * знает границы; клиент их не дублирует, иначе набора правил стало бы два и
+ * они бы разъехались. Приводить к числу на клиенте нельзя: `Number("38-40")`
+ * даёт `NaN`, а `JSON.stringify` превращает его в `null` — и вместо отказа
+ * сервер прочитал бы «мерку стёрли».
+ */
 export interface PetDraft {
   name: string;
   breed?: string;
   size?: CatalogSize;
-  chestCm?: number;
-  neckCm?: number;
-  backCm?: number;
+  chestCm?: number | string;
+  neckCm?: number | string;
+  backCm?: number | string;
 }
 
 /**
