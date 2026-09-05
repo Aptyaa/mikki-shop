@@ -4,6 +4,7 @@ import {
   Band,
   Button,
   Checkbox,
+  Chip,
   Divider,
   EmptyState,
   Input,
@@ -12,7 +13,7 @@ import {
   RadioTile,
 } from "@mikki-shop/ui";
 import type { DeliveryMethod, Order } from "@mikki-shop/shared-types";
-import { HttpError, createOrder, fetchCartPreview } from "../api/catalog";
+import { HttpError, createOrder, fetchCartPreview, fetchPets } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
 import { useAuth } from "../lib/auth";
 import { toCartInput, useCart } from "../lib/cart";
@@ -73,6 +74,19 @@ export function CheckoutScreen() {
   const [consent, setConsent] = useState(false);
   const [placed, setPlaced] = useState<Order | null>(null);
 
+  /**
+   * Питомцы покупателя — чтобы кличку можно было выбрать, а не набирать.
+   *
+   * Тот же ключ, что у профиля: список один и тот же. Ошибку и загрузку экран
+   * не показывает вовсе — поле остаётся обычным текстовым, каким и было.
+   * Заказ не должен упираться в справочник, который к нему не обязателен.
+   */
+  const pets = useQuery({
+    queryKey: ["pets"],
+    queryFn: ({ signal }) => fetchPets(signal),
+    enabled: signedIn,
+  });
+
   const preview = useQuery({
     queryKey: ["cart", "preview", cart],
     queryFn: ({ signal }) => fetchCartPreview(toCartInput(cart), signal),
@@ -107,6 +121,7 @@ export function CheckoutScreen() {
     name.trim().length > 0 &&
     phone.replace(/\D/g, "").length >= 10 &&
     (!addressNeeded || address.trim().length > 0);
+  const petList = pets.data ?? [];
   const total = preview.data?.total ?? 0;
   // Нехватку сервер встретит отказом на весь заказ. Отправлять заявку, зная,
   // что она вернётся 409, — только гонять покупателя между экранами.
@@ -215,6 +230,29 @@ export function CheckoutScreen() {
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-5)" }}>
               <div>
                 <div className="ms-eyebrow" style={{ marginBottom: "var(--sp-3)" }}>кличка питомца</div>
+
+                {/* Заведённые питомцы — пилюлями над полем. Повторное нажатие
+                    снимает выбор: кличка необязательна, и передумать после
+                    первого касания иначе было бы нечем. Поле остаётся
+                    текстовым — заказать можно и на питомца без карточки. */}
+                {petList.length > 0 && (
+                  <div style={{ display: "flex", gap: "var(--sp-3)", overflowX: "auto",
+                    margin: "0 calc(var(--gutter) * -1) var(--sp-4)",
+                    padding: "0 var(--gutter)", scrollbarWidth: "none" }}>
+                    {petList.map((pet) => (
+                      <Chip
+                        key={pet.id}
+                        selected={petName.trim() === pet.name}
+                        onClick={() =>
+                          setPetName((current) => (current.trim() === pet.name ? "" : pet.name))
+                        }
+                      >
+                        {pet.name}
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+
                 <Input
                   value={petName}
                   placeholder="Микки"
