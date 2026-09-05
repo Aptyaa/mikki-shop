@@ -22,7 +22,7 @@ import { fetchCategories, fetchProducts } from "../api/catalog";
 import { ScreenBar } from "../components/ScreenBar";
 import { useAuth } from "../lib/auth";
 import { useCart } from "../lib/cart";
-import { navigate } from "../lib/route";
+import { goBack, navigate } from "../lib/route";
 import { plural } from "../lib/plural";
 
 const SORTS: { key: CatalogSort; label: string }[] = [
@@ -51,9 +51,19 @@ function SkeletonGrid() {
   );
 }
 
-/** Каталог: главный экран Mini App. Раскладка повторяет ui_kits/telegram дизайн-системы. */
-export function CatalogScreen() {
-  const [category, setCategory] = useState(ALL.key);
+interface CatalogScreenProps {
+  /**
+   * Категория, с которой каталог открывается: ключ из адреса
+   * (`#/catalog?category=sweaters`), когда в каталог пришли по конкретной
+   * категории со стартового экрана. Дальше фильтр живёт в экране: адрес
+   * его не переписывает, чтобы возврат из карточки не сбрасывал выбор.
+   */
+  initialCategory?: string;
+}
+
+/** Каталог: экран выдачи. Раскладка повторяет ui_kits/telegram дизайн-системы. */
+export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
+  const [category, setCategory] = useState(initialCategory ?? ALL.key);
   const [size, setSize] = useState<CatalogSize | undefined>(undefined);
   const [sort, setSort] = useState<CatalogSort>("pop");
   const [search, setSearch] = useState("");
@@ -140,6 +150,7 @@ export function CatalogScreen() {
       <ScreenBar
         title="Каталог"
         subtitle={head ? models(total) : undefined}
+        onBack={goBack}
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
             <IconButton label="Поиск" active={searchOpen} onClick={toggleSearch}>

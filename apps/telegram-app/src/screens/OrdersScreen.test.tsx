@@ -122,7 +122,7 @@ describe("OrdersScreen — список", () => {
     expect(await screen.findByText("Заказов пока нет")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "В каталог" }));
-    expect(window.location.hash).toBe("#/");
+    expect(window.location.hash).toBe("#/catalog");
   });
 
   it("на сбой предлагает повторить", async () => {

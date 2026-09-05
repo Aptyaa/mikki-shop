@@ -73,7 +73,7 @@ describe("CartScreen — пустая корзина", () => {
     expect(await screen.findByText("В корзине пока пусто")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "В каталог" }));
-    expect(window.location.hash).toBe("#/");
+    expect(window.location.hash).toBe("#/catalog");
   });
 });
 

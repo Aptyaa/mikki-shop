@@ -270,7 +270,7 @@ describe("ProductScreen — товара нет", () => {
     expect(await screen.findByText("Такого товара нет")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "В каталог" }));
-    expect(window.location.hash).toBe("#/");
+    expect(window.location.hash).toBe("#/catalog");
   });
 
   // 404 — окончательный ответ: повтор показал бы «загружаем» вместо объяснения.
