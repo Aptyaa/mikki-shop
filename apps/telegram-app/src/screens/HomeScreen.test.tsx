@@ -121,29 +121,46 @@ describe("HomeScreen — витрина", () => {
     expect(await screen.findByText("41 модель")).toBeTruthy();
   });
 
-  it("ссылку на заказы показывает только вошедшему", async () => {
-    renderScreen();
-    expect(screen.queryByRole("button", { name: "Мои заказы" })).toBeNull();
-    cleanup();
-
+  /**
+   * Корзина, профиль и каталог переехали в нижний бар, и дублировать их
+   * кнопками в шапке незачем: два способа сделать одно и то же под одним
+   * пальцем — это не забота, а вопрос «а эта куда».
+   */
+  it("не дублирует вкладки кнопками в шапке", () => {
     signIn();
     renderScreen();
-    expect(screen.getByRole("button", { name: "Мои заказы" })).toBeTruthy();
+
+    const bar = screen.getByRole("navigation");
+    expect(within(bar).getByRole("button", { name: /Корзина/ })).toBeTruthy();
+    // Вне бара кнопки корзины на экране нет.
+    expect(
+      screen.getAllByRole("button", { name: /Корзина/ }).filter((node) => !bar.contains(node)),
+    ).toHaveLength(0);
   });
 
-  it("показывает счётчик корзины и ведёт в неё", () => {
+  it("показывает счётчик корзины в баре и ведёт в неё", () => {
     useCart.setState({
       items: [{ slug: "product-1", size: "M", quantity: 3 }],
     });
     renderScreen();
 
-    // Счётчик ищется внутри самой кнопки: «3» на экране есть и у третьего
+    // Счётчик ищется внутри самой вкладки: «3» на экране есть и у третьего
     // шага онбординга.
-    const cart = screen.getByRole("button", { name: "Корзина" });
+    const cart = within(screen.getByRole("navigation")).getByRole("button", { name: /Корзина/ });
     expect(within(cart).getByText("3")).toBeTruthy();
 
     fireEvent.click(cart);
     expect(window.location.hash).toBe("#/cart");
+  });
+
+  it("ведёт в профиль из бара", () => {
+    signIn();
+    renderScreen();
+
+    fireEvent.click(
+      within(screen.getByRole("navigation")).getByRole("button", { name: /Профиль/ }),
+    );
+    expect(window.location.hash).toBe("#/profile");
   });
 });
 

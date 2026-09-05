@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type {
   CatalogCategory,
   CatalogProduct,
@@ -77,6 +77,22 @@ function node(text: string): HTMLElement {
   return found;
 }
 
+/**
+ * Примета каталога.
+ *
+ * По заголовку шапки его больше не отличить: в нижнем баре есть вкладка
+ * «Каталог», и текст стал неоднозначным. Берём псевдокатегорию «Всё» — она
+ * бывает только в его ряду категорий (у главной действие называется «всё →»,
+ * это другой текст).
+ *
+ * Ищется по тексту, а не по роли: `*ByRole` не видит того, что спрятано через
+ * `visibility`, — а проверять надо в том числе «каталог смонтирован, но не
+ * показан», ровно ради чего слои и заведены.
+ */
+function catalogMark(): HTMLElement {
+  return node("Всё");
+}
+
 beforeEach(() => {
   window.location.hash = "";
   window.localStorage.clear();
@@ -95,7 +111,8 @@ describe("App — роутинг", () => {
     renderApp();
 
     expect(await screen.findByText("Одежда для маленьких собак")).toBeTruthy();
-    expect(screen.queryByText("Каталог")).toBeNull();
+    // Каталог ещё не смонтирован — его приметы на экране нет.
+    expect(screen.queryByText("Всё")).toBeNull();
   });
 
   /**
@@ -113,7 +130,7 @@ describe("App — роутинг", () => {
     await screen.findByText("Одежда для маленьких собак");
 
     act(() => navigate({ name: "catalog" }));
-    expect(await screen.findByText("Каталог")).toBeTruthy();
+    await waitFor(() => expect(catalogMark()).toBeVisible());
 
     // Первый заход в карточку — тот самый момент, где рвалась подписка.
     act(() => navigate({ name: "product", slug: ITEM.slug }));
@@ -121,12 +138,12 @@ describe("App — роутинг", () => {
     await screen.findByText("Таблица размеров");
 
     act(() => navigate({ name: "catalog" }));
-    expect(node("Каталог")).toBeVisible();
+    expect(catalogMark()).toBeVisible();
     expect(node("Таблица размеров")).not.toBeVisible();
 
     act(() => navigate({ name: "home" }));
     expect(node("Одежда для маленьких собак")).toBeVisible();
-    expect(node("Каталог")).not.toBeVisible();
+    expect(catalogMark()).not.toBeVisible();
   });
 
   it("каталог не запрашивает выдачу, пока в него не зашли", async () => {
@@ -137,7 +154,7 @@ describe("App — роутинг", () => {
     expect(vi.mocked(fetchProducts).mock.calls.every(([query]) => query.sort === "new")).toBe(true);
 
     act(() => navigate({ name: "catalog" }));
-    await screen.findByText("Каталог");
+    await waitFor(() => expect(catalogMark()).toBeVisible());
     expect(vi.mocked(fetchProducts).mock.calls.some(([query]) => query.sort !== "new")).toBe(true);
   });
 
@@ -152,7 +169,7 @@ describe("App — роутинг", () => {
     await screen.findByText("Одежда для маленьких собак");
 
     act(() => navigate({ name: "catalog", category: "rain" }));
-    await screen.findByText("Каталог");
+    await waitFor(() => expect(catalogMark()).toBeVisible());
 
     // Что-нибудь, что живёт только в состоянии экрана каталога.
     act(() => {
@@ -161,7 +178,7 @@ describe("App — роутинг", () => {
     expect(screen.getByPlaceholderText("Свитер, дождевик, бандана")).toBeVisible();
 
     act(() => navigate({ name: "cart" }));
-    await screen.findByText("Корзина");
+    await screen.findByText("В корзине пока пусто");
 
     act(() => navigate({ name: "catalog" }, { replace: true }));
     expect(screen.getByPlaceholderText("Свитер, дождевик, бандана")).toBeVisible();
@@ -172,7 +189,7 @@ describe("App — роутинг", () => {
     await screen.findByText("Одежда для маленьких собак");
 
     act(() => navigate({ name: "catalog", category: "rain" }));
-    await screen.findByText("Каталог");
+    await waitFor(() => expect(catalogMark()).toBeVisible());
 
     const asked = vi.mocked(fetchProducts).mock.calls.map(([query]) => query.category);
     expect(asked).toContain("rain");
