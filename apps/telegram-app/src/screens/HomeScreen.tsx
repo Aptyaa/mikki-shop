@@ -117,10 +117,17 @@ export function HomeScreen() {
       <AppBar
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
+            {/* Профиль и заказы только вошедшим: гостю они ведут в экран,
+                который умеет сказать лишь «откройте магазин в Telegram». */}
             {signedIn && (
-              <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
-                <Icon name="package" />
-              </IconButton>
+              <>
+                <IconButton label="Мои заказы" onClick={() => navigate({ name: "orders" })}>
+                  <Icon name="package" />
+                </IconButton>
+                <IconButton label="Профиль" onClick={() => navigate({ name: "profile" })}>
+                  <Icon name="user" />
+                </IconButton>
+              </>
             )}
             <IconButton
               label="Корзина"

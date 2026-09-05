@@ -11,4 +11,12 @@ export const MAX_NAME = 100;
 export const MAX_PHONE = 30;
 export const MAX_ADDRESS = 500;
 export const MAX_COMMENT = 1000;
-export const MAX_PET_NAME = 60;
+
+/**
+ * Предел клички — из модуля питомцев, а не свой.
+ *
+ * Кличка попадает в ту же уникальную `Pet.name` с двух сторон: из формы заказа
+ * и из карточки питомца. Разъехавшиеся пределы молча переименовывали бы
+ * питомца и заводили бы ему дубль при следующем заказе.
+ */
+export { MAX_PET_NAME } from "../pets/pets.constants";

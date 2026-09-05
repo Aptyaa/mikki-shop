@@ -9,15 +9,17 @@ vi.mock("../api/catalog", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/catalog")>()),
   fetchCartPreview: vi.fn(),
   createOrder: vi.fn(),
+  fetchPets: vi.fn(),
 }));
 
-import { HttpError, createOrder, fetchCartPreview } from "../api/catalog";
+import { HttpError, createOrder, fetchCartPreview, fetchPets } from "../api/catalog";
 import { useAuth } from "../lib/auth";
 import { useCart } from "../lib/cart";
 import { CheckoutScreen } from "./CheckoutScreen";
 
 const preview = vi.mocked(fetchCartPreview);
 const place = vi.mocked(createOrder);
+const pets = vi.mocked(fetchPets);
 
 const ITEM = { slug: "bandana-kletka", size: "M", color: "Кирпичный", quantity: 2 } as const;
 
@@ -89,6 +91,7 @@ beforeEach(() => {
   useAuth.setState({ token: null, expiresAt: null, user: null });
   preview.mockResolvedValue(PREVIEW);
   place.mockResolvedValue(ORDER);
+  pets.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -196,6 +199,84 @@ describe("CheckoutScreen — форма", () => {
       items: [{ slug: "bandana-kletka", size: "M", color: "Кирпичный", quantity: 2 }],
     });
     expect(draft).not.toHaveProperty("address");
+  });
+});
+
+describe("CheckoutScreen — питомец из профиля", () => {
+  beforeEach(signIn);
+
+  it("подставляет кличку по нажатию, вместо набора руками", async () => {
+    pets.mockResolvedValue([
+      { id: "pet1", name: "Микки", size: "S" },
+      { id: "pet2", name: "Соня" },
+    ]);
+    renderScreen();
+    await screen.findByText("как получить");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Микки/ }));
+
+    expect(screen.getByPlaceholderText("Микки")).toHaveValue("Микки");
+  });
+
+  // Кличка необязательна: передумать после первого касания должно быть чем.
+  it("повторное нажатие снимает выбор", async () => {
+    pets.mockResolvedValue([{ id: "pet1", name: "Микки" }]);
+    renderScreen();
+    await screen.findByText("как получить");
+
+    const chip = await screen.findByRole("button", { name: /Микки/ });
+    fireEvent.click(chip);
+    fireEvent.click(chip);
+
+    expect(screen.getByPlaceholderText("Микки")).toHaveValue("");
+  });
+
+  it("уносит выбранную кличку в заявку", async () => {
+    pets.mockResolvedValue([{ id: "pet1", name: "Соня" }]);
+    renderScreen();
+    await screen.findByText("как получить");
+    await fillForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Соня/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Отправить заявку" }));
+
+    await waitFor(() => expect(place).toHaveBeenCalled());
+    const draft = place.mock.calls[0]?.[0] as OrderDraft | undefined;
+    expect(draft?.petName).toBe("Соня");
+  });
+
+  // Поле остаётся текстовым: заказать можно и на питомца без карточки.
+  it("оставляет возможность набрать кличку руками", async () => {
+    pets.mockResolvedValue([{ id: "pet1", name: "Микки" }]);
+    renderScreen();
+    await screen.findByText("как получить");
+
+    fireEvent.change(screen.getByPlaceholderText("Микки"), { target: { value: "Барон" } });
+
+    expect(screen.getByPlaceholderText("Микки")).toHaveValue("Барон");
+  });
+
+  /**
+   * Справочник питомцев заказу не обязателен: если он не загрузился, форма
+   * должна остаться рабочей, а не встать вместе с ним.
+   */
+  it("переживает недоступный справочник питомцев", async () => {
+    pets.mockRejectedValue(new Error("нет сети"));
+    renderScreen();
+    await screen.findByText("как получить");
+    await fillForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "Отправить заявку" }));
+
+    expect(await screen.findByText("Заказ 42 принят")).toBeTruthy();
+  });
+
+  it("гостю за питомцами не ходит", async () => {
+    useAuth.setState({ token: null, expiresAt: null, user: null });
+    renderScreen();
+
+    await screen.findByText("Заказ оформляется из Telegram");
+    expect(pets).not.toHaveBeenCalled();
   });
 });
 
