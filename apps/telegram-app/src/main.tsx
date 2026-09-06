@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
-import { followTheme } from "./lib/telegram";
+import { followInsets, followTheme } from "./lib/telegram";
 import "@mikki-shop/ui/styles.css";
 import "./index.css";
 
@@ -19,6 +19,11 @@ const queryClient = new QueryClient({
 // в ките готовы с самого начала и ждали ровно этого. Подписка ставится до
 // рендера, чтобы первый кадр уже был в нужной теме.
 followTheme();
+
+// Отступы клиента — туда же, до первого кадра: в полном экране приложение
+// рисует под вырезом устройства и под плавающими кнопками Telegram, и шапка
+// без этого запаса приезжает под часы.
+followInsets();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

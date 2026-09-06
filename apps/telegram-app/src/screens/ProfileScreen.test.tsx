@@ -87,6 +87,20 @@ describe("ProfileScreen — гость", () => {
     expect(await screen.findByText("Профиль виден из Telegram")).toBeTruthy();
     expect(pets).not.toHaveBeenCalled();
   });
+
+  /**
+   * Экран открывается вкладкой нижнего бара, а вкладки не кладут запись в
+   * историю: переход между ними — один уровень, а не путь вглубь. Стрелка
+   * «назад» здесь обещала бы возврат туда, откуда пришли, а закрывала бы
+   * приложение. Назад отсюда — сам бар.
+   */
+  it("не рисует стрелку «назад»: сюда приходят вкладкой, а не вглубь", async () => {
+    renderScreen();
+    expect(await screen.findByText("Профиль виден из Telegram")).toBeTruthy();
+
+
+    expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
+  });
 });
 
 describe("ProfileScreen — кто вошёл", () => {

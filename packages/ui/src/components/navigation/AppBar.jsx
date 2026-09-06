@@ -6,6 +6,10 @@ export function AppBar({title,subtitle,left=null,right=null,transparent=false,ce
   return (
     <header style={{display:"flex",alignItems:"center",gap:"var(--sp-3)",minHeight:56,
       padding:"var(--sp-3) var(--gutter)",
+      /* Полоса липкая и стоит первой в экране, поэтому запас под вырез и
+         кнопки клиента (в полном экране Mini App рисует под ними) — её дело.
+         Вне Telegram `--safe-top` это `env(safe-area-inset-top)`, обычно 0. */
+      paddingTop:"calc(var(--sp-3) + var(--safe-top))",
       background:transparent?"transparent":"var(--bg-page)",
       borderBottom:transparent?"none":"1px solid var(--border-subtle)",
       position:"sticky",top:0,zIndex:20,...style}} {...rest}>

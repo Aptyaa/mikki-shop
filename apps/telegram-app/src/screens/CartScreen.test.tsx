@@ -75,6 +75,19 @@ describe("CartScreen — пустая корзина", () => {
     fireEvent.click(screen.getByRole("button", { name: "В каталог" }));
     expect(window.location.hash).toBe("#/catalog");
   });
+
+  /**
+   * Экран открывается вкладкой нижнего бара, а вкладки не кладут запись в
+   * историю: переход между ними — один уровень, а не путь вглубь. Стрелка
+   * «назад» здесь обещала бы возврат туда, откуда пришли, а закрывала бы
+   * приложение. Назад отсюда — сам бар.
+   */
+  it("не рисует стрелку «назад»: сюда приходят вкладкой, а не вглубь", async () => {
+    renderScreen();
+    await screen.findByText("В корзине пока пусто");
+
+    expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
+  });
 });
 
 describe("CartScreen — строки", () => {

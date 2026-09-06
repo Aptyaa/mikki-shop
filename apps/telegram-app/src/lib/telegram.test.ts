@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  attachNativeBack,
+  followInsets,
   followTheme,
   inTelegram,
   initData,
@@ -13,7 +13,6 @@ type Handler = () => void;
 
 function fakeWebApp(over: Record<string, unknown> = {}) {
   const events = new Map<string, Set<Handler>>();
-  const backHandlers = new Set<Handler>();
 
   return {
     initData: "user=%7B%22id%22%3A1%7D&hash=abc",
@@ -21,6 +20,10 @@ function fakeWebApp(over: Record<string, unknown> = {}) {
     colorScheme: "light" as "light" | "dark",
     ready: vi.fn(),
     expand: vi.fn(),
+    isVersionAtLeast: vi.fn((version: string) => version <= "8.0"),
+    requestFullscreen: vi.fn(),
+    safeAreaInset: { top: 47, bottom: 34, left: 0, right: 0 },
+    contentSafeAreaInset: { top: 46, bottom: 0, left: 0, right: 0 },
     onEvent: vi.fn((event: string, handler: Handler) => {
       if (!events.has(event)) events.set(event, new Set());
       events.get(event)?.add(handler);
@@ -28,15 +31,8 @@ function fakeWebApp(over: Record<string, unknown> = {}) {
     offEvent: vi.fn((event: string, handler: Handler) => {
       events.get(event)?.delete(handler);
     }),
-    BackButton: {
-      show: vi.fn(),
-      hide: vi.fn(),
-      onClick: vi.fn((handler: Handler) => backHandlers.add(handler)),
-      offClick: vi.fn((handler: Handler) => backHandlers.delete(handler)),
-    },
     /** Позвать подписчиков события — так это делает клиент Telegram. */
     fire: (event: string) => events.get(event)?.forEach((handler) => handler()),
-    pressBack: () => backHandlers.forEach((handler) => handler()),
     ...over,
   };
 }
@@ -44,6 +40,8 @@ function fakeWebApp(over: Record<string, unknown> = {}) {
 afterEach(() => {
   delete window.Telegram;
   delete document.documentElement.dataset.theme;
+  document.documentElement.style.removeProperty("--safe-top");
+  document.documentElement.style.removeProperty("--safe-bottom");
   vi.clearAllMocks();
 });
 
@@ -52,8 +50,8 @@ describe("без скрипта Telegram", () => {
     expect(inTelegram()).toBe(false);
     expect(initData()).toBe("");
     expect(() => start()).not.toThrow();
-    expect(attachNativeBack(() => undefined)).toBeUndefined();
     expect(() => followTheme()()).not.toThrow();
+    expect(() => followInsets()()).not.toThrow();
   });
 
   it("не трогает тему документа", () => {
@@ -81,10 +79,6 @@ describe("вне Telegram, но со скриптом", () => {
 
   it("не считает себя открытым в Telegram", () => {
     expect(inTelegram()).toBe(false);
-  });
-
-  it("оставляет кнопку «назад» шапке, а не заглушке клиента", () => {
-    expect(attachNativeBack(() => undefined)).toBeUndefined();
   });
 
   it("не трогает ни тему, ни заставку", () => {
@@ -135,6 +129,88 @@ describe("внутри Telegram", () => {
 
     expect(() => start()).not.toThrow();
   });
+
+  // Иначе вид приложения зависит от того, откуда его открыли: из кнопки меню
+  // бота клиент рисует сверху свою полосу с именем бота и «Назад», из чата —
+  // нет. Полный экран убирает полосу везде.
+  it("просит полный экран", () => {
+    start();
+
+    expect(webApp.requestFullscreen).toHaveBeenCalled();
+  });
+
+  // У клиента младше 8.0 метода нет вовсе. `?.` спас бы от падения, но просить
+  // всё равно нечего — а вот проверять версию обязательно.
+  it("не просит полного экрана у старого клиента", () => {
+    const old = fakeWebApp({
+      isVersionAtLeast: vi.fn(() => false),
+      requestFullscreen: vi.fn(),
+    });
+    window.Telegram = { WebApp: old as never };
+
+    start();
+
+    expect(old.requestFullscreen).not.toHaveBeenCalled();
+  });
+});
+
+describe("отступы клиента", () => {
+  const safeTop = () => document.documentElement.style.getPropertyValue("--safe-top");
+  const safeBottom = () => document.documentElement.style.getPropertyValue("--safe-bottom");
+
+  // Вырез устройства и плавающие кнопки Telegram — два разных запаса, занято
+  // и то, и другое: 47 + 46 сверху, 34 + 0 снизу.
+  it("складывает вырез устройства и место под кнопки клиента", () => {
+    window.Telegram = { WebApp: fakeWebApp() as never };
+
+    followInsets();
+
+    expect(safeTop()).toBe("93px");
+    expect(safeBottom()).toBe("34px");
+  });
+
+  it("пересчитывает по событию клиента и отписывается", () => {
+    const webApp = fakeWebApp();
+    window.Telegram = { WebApp: webApp as never };
+
+    const stop = followInsets();
+    webApp.safeAreaInset = { top: 0, bottom: 0, left: 0, right: 0 };
+    webApp.contentSafeAreaInset = { top: 56, bottom: 0, left: 0, right: 0 };
+    webApp.fire("fullscreenChanged");
+    expect(safeTop()).toBe("56px");
+
+    stop();
+    webApp.contentSafeAreaInset = { top: 99, bottom: 0, left: 0, right: 0 };
+    webApp.fire("fullscreenChanged");
+    expect(safeTop()).toBe("56px");
+  });
+
+  // У клиента младше 8.0 полей нет. Записать туда ноль значило бы стереть
+  // рабочее `env(safe-area-inset-*)` из токенов кита ради пустого значения.
+  it("не трогает токены, когда клиент отступов не даёт", () => {
+    window.Telegram = {
+      WebApp: fakeWebApp({
+        safeAreaInset: undefined,
+        contentSafeAreaInset: undefined,
+      }) as never,
+    };
+
+    followInsets();
+
+    expect(safeTop()).toBe("");
+    expect(safeBottom()).toBe("");
+  });
+
+  // В браузере клиента нет, а `env()` в токенах есть — трогать нечего.
+  it("не трогает токены вне Telegram", () => {
+    window.Telegram = {
+      WebApp: fakeWebApp({ platform: "unknown", initData: "" }) as never,
+    };
+
+    followInsets();
+
+    expect(safeTop()).toBe("");
+  });
 });
 
 describe("тема", () => {
@@ -166,41 +242,6 @@ describe("тема", () => {
     webApp.fire("themeChanged");
 
     expect(document.documentElement.dataset.theme).toBe("light");
-  });
-});
-
-describe("нативная кнопка «назад»", () => {
-  it("показывается и зовёт обработчик", () => {
-    const webApp = fakeWebApp();
-    window.Telegram = { WebApp: webApp as never };
-    const onBack = vi.fn();
-
-    const stop = attachNativeBack(onBack);
-    webApp.pressBack();
-
-    expect(webApp.BackButton.show).toHaveBeenCalled();
-    expect(onBack).toHaveBeenCalled();
-    expect(stop).toBeTypeOf("function");
-  });
-
-  // Иначе кнопка осталась бы висеть на экране, где её быть не должно, —
-  // например, в каталоге после возврата из карточки.
-  it("прячется при отписке", () => {
-    const webApp = fakeWebApp();
-    window.Telegram = { WebApp: webApp as never };
-    const onBack = vi.fn();
-
-    attachNativeBack(onBack)?.();
-    webApp.pressBack();
-
-    expect(webApp.BackButton.hide).toHaveBeenCalled();
-    expect(onBack).not.toHaveBeenCalled();
-  });
-
-  it("в клиенте без кнопки отдаёт undefined, чтобы шапка нарисовала свою", () => {
-    window.Telegram = { WebApp: fakeWebApp({ BackButton: undefined }) as never };
-
-    expect(attachNativeBack(() => undefined)).toBeUndefined();
   });
 });
 

@@ -91,15 +91,43 @@ function secretKey(botToken: string): Buffer {
 }
 
 /**
- * Строка, которую подписывает Telegram: все поля, кроме `hash`, по алфавиту,
- * `key=value` через перевод строки.
+ * Наборы полей, которые в строку подписи не входят.
+ *
+ * Их два, и это не перестраховка, а факт с телефона. Документация Telegram
+ * говорит исключать `hash` и `signature` (второе — поле из Bot API 7.10 для
+ * сторонней проверки по Ed25519, когда `initData` показывают тому, у кого нет
+ * токена бота). Настоящий клиент iOS считает `hash` иначе: `signature` у него
+ * в подписываемой строке **остаётся**, и по документации его вход отвергался
+ * как `bad-signature`. Поймать это можно было только живым запуском — перебором
+ * вариантов строки прямо на пришедших с телефона данных.
+ *
+ * Поэтому принимаем оба — с открытыми глазами на то, чем за это платим.
+ *
+ * Плата ровно одна: приняв второй вариант, мы выводим из-под подписи само поле
+ * `signature`. К чужому валидному `initData` можно дописать `&signature=что
+ * угодно`, и проверка пройдёт. Это ничего не даёт: `signature` мы не читаем
+ * вовсе — ни в профиль, ни в заказ он не попадает, — а чтобы дописать, нужен
+ * уже украденный чужой `initData`, который и без всякой дописки годится сам по
+ * себе, пока не истечёт окно свежести. Подобрать подпись без токена бота
+ * по-прежнему нельзя: обе строки считаются тем же секретом над теми же данными.
+ *
+ * Отказаться от второго варианта — значит поверить, что все клиенты считают
+ * `hash` как iOS. Проверить это можно только на устройствах, а цена ошибки —
+ * покупатель, который не может войти, и `bad-signature` в логе вместо
+ * объяснения. Ровно этот вечер так и прошёл.
  */
-function checkString(params: URLSearchParams): string {
+const UNSIGNED_VARIANTS: readonly (readonly string[])[] = [
+  ["hash"],
+  ["hash", "signature"],
+];
+
+/** Строка подписи: поля по алфавиту, `key=value`, через перевод строки. */
+function checkString(params: URLSearchParams, unsigned: readonly string[]): string {
   return [...params.entries()]
-    .filter(([key]) => key !== "hash")
+    .filter(([key]) => !unsigned.includes(key))
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
+    .join(String.fromCharCode(10));
 }
 
 /**
@@ -120,20 +148,25 @@ export function verifyInitData(
   const hash = params.get("hash");
   if (!hash) return { ok: false, reason: "no-hash" };
 
-  const expected = createHmac("sha256", secretKey(botToken))
-    .update(checkString(params))
-    .digest();
   let given: Buffer;
   try {
     given = Buffer.from(hash, "hex");
   } catch {
     return { ok: false, reason: "bad-signature" };
   }
+  const key = secretKey(botToken);
   // Сравнение постоянного времени: обычное `===` на строках выходит из цикла на
-  // первом различии, и по времени ответа подпись подбирается побайтово.
-  if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
-    return { ok: false, reason: "bad-signature" };
-  }
+  // первом различии, и по времени ответа подпись подбирается побайтово. Оба
+  // варианта считаются целиком, без выхода на первом совпадении: иначе по
+  // времени ответа видно, какой из них сошёлся.
+  const matched = UNSIGNED_VARIANTS.reduce((found, unsigned) => {
+    const expected = createHmac("sha256", key)
+      .update(checkString(params, unsigned))
+      .digest();
+    const same = given.length === expected.length && timingSafeEqual(given, expected);
+    return found || same;
+  }, false);
+  if (!matched) return { ok: false, reason: "bad-signature" };
 
   const authDateRaw = Number.parseInt(params.get("auth_date") ?? "", 10);
   if (!Number.isFinite(authDateRaw)) return { ok: false, reason: "malformed" };
@@ -172,10 +205,16 @@ export function verifyInitData(
 export function signInitData(
   fields: Record<string, string>,
   botToken: string,
+  /**
+   * Что не подписывать. По умолчанию — только `hash`, как делает живой клиент:
+   * `signature`, если он передан, в строку подписи входит. Второй набор нужен
+   * тестам, чтобы проверить и вариант из документации.
+   */
+  unsigned: readonly string[] = UNSIGNED_VARIANTS[0]!,
 ): string {
   const params = new URLSearchParams(fields);
   const hash = createHmac("sha256", secretKey(botToken))
-    .update(checkString(params))
+    .update(checkString(params, unsigned))
     .digest("hex");
   params.set("hash", hash);
   return params.toString();

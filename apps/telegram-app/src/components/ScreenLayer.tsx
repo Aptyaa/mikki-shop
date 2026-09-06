@@ -1,19 +1,4 @@
-import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
-
-/**
- * Виден ли экран прямо сейчас.
- *
- * Каталог и карточка не размонтируются, пока открыт экран поверх них, — иначе
- * возврат назад терял бы фильтры, подгруженные страницы и выбранный размер.
- * Но смонтированный экран не значит показанный, и всё, что он занимает вне
- * себя — нативная кнопка «назад» Telegram, — обязано это различать.
- */
-const Visible = createContext(true);
-
-export function useScreenVisible(): boolean {
-  return useContext(Visible);
-}
 
 /**
  * Слой экрана.
@@ -22,6 +7,13 @@ export function useScreenVisible(): boolean {
  * элемента браузер выбрасывает бокс прокрутки, и экран возвращался бы к
  * началу. `position: fixed` при этом убирает его из потока, чтобы верхний
  * экран занимал вьюпорт целиком.
+ *
+ * Скрытый через `visibility` слой выпадает и из дерева доступности: кнопки
+ * оставшегося смонтированным экрана не найдёт ни палец, ни скринридер. Раньше
+ * здесь же жил контекст «виден ли экран» — он был нужен шапке, пока она
+ * занимала нативную кнопку «назад» Telegram, то есть место ВНЕ своего слоя,
+ * которое `visibility` не прячет. Кнопку мы больше не занимаем, и контекст
+ * ушёл вместе с ней.
  */
 const HIDDEN = {
   position: "fixed",
@@ -33,9 +25,5 @@ const HIDDEN = {
 } as const;
 
 export function ScreenLayer({ hidden, children }: { hidden: boolean; children: ReactNode }) {
-  return (
-    <Visible.Provider value={!hidden}>
-      <div style={hidden ? HIDDEN : undefined}>{children}</div>
-    </Visible.Provider>
-  );
+  return <div style={hidden ? HIDDEN : undefined}>{children}</div>;
 }
