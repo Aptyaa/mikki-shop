@@ -27,7 +27,8 @@ pnpm --filter telegram-app dev # http://127.0.0.1:5173
 
 | Сервис | Порт |
 |---|---|
-| telegram-app (Vite) | 5173 |
+| telegram-app (Vite dev) | 5173 |
+| telegram-app (nginx в Docker) | 8080 |
 | api (NestJS) | 3001 (внутри Docker — 3000) |
 | postgres | 5433 (внутри Docker — 5432) |
 | redis | 6379 |
@@ -41,9 +42,30 @@ pnpm --filter telegram-app dev # http://127.0.0.1:5173
 1. **Бот.** [@BotFather](https://t.me/BotFather) → `/newbot`. Полученный токен —
    в `.env`, поле `TELEGRAM_BOT_TOKEN`. В репозиторий он не попадёт: `.env` в
    `.gitignore`. Без токена вход выключен целиком (а не «пускает всех»).
-2. **Публичный HTTPS.** Telegram открывает Mini App только по HTTPS, локальный
-   адрес не подойдёт. Задеплойте `apps/telegram-app` куда угодно с сертификатом
-   и укажите этой сборке боевой `VITE_API_URL`.
+2. **Публичный HTTPS.** Mini App открывает клиент Telegram на телефоне
+   покупателя, и локальный адрес — хоть с сертификатом, хоть без — ему
+   недоступен. Пока нет деплоя, наружу выставляется локальный стек:
+
+   ```bash
+   docker compose --profile tunnel up -d --build
+   docker compose logs tunnel | grep trycloudflare   # адрес приложения
+   ```
+
+   Адрес вида `https://<случайные-слова>.trycloudflare.com` меняется при каждом
+   перезапуске туннеля. Фронт и API за ним живут на одном origin: nginx
+   проксирует `/api` на NestJS, поэтому туннель нужен ровно один. Подробности и
+   почему не ngrok — `docs/features/014-public-https.md`.
+
+   Две вещи в `.env` до первого запуска туннеля, обе — про клоны, заведённые
+   раньше него:
+
+   - **`VITE_API_URL=/api`** (было `http://127.0.0.1:3001`). `.env` в
+     `.gitignore`, поэтому обновлённый `.env.example` сам ничего не поправит: со
+     старым значением бандл соберётся с абсолютным http-адресом, и клиент
+     Telegram зарежет его как mixed content — приложение откроется пустым.
+   - **`JWT_SECRET`** — длинная случайная строка вместо `change-me`. За туннелем
+     API виден из интернета, а с общеизвестным секретом токен покупателя
+     подделывается тривиально.
 3. **Привязка.** @BotFather → `/setmenubutton` (или Bot Settings → Menu Button)
    → адрес приложения из шага 2.
 4. **Куда слать заказы.** Свой chat id (например, у

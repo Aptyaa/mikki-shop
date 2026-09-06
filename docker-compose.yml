@@ -51,5 +51,21 @@ services:
     depends_on:
       - api
 
+  # Публичный HTTPS для Telegram: Mini App открывает клиент на телефоне
+  # покупателя, и localhost-адрес — хоть с сертификатом, хоть без — ему
+  # недоступен. Профиль, а не обычный сервис: обычная разработка идёт по
+  # 127.0.0.1:8080 и наружу не светится.
+  #   docker compose --profile tunnel up -d
+  #   docker compose logs tunnel | grep trycloudflare
+  # Туннель смотрит на telegram-app, а не на api: фронт и API живут за одним
+  # origin (nginx проксирует /api), поэтому туннель нужен ровно один.
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:2025.8.1
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://telegram-app:80
+    depends_on:
+      - telegram-app
+
 volumes:
   pgdata:
