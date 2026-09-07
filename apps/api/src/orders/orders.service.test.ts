@@ -4,6 +4,7 @@ import type { CartPreview, OrderDraft } from "@mikki-shop/shared-types";
 import { OrdersService } from "./orders.service";
 import type { CartService } from "../cart/cart.service";
 import type { ManagerNotifier } from "./manager-notifier";
+import type { CustomerNotifier } from "./customer-notifier";
 import type { PrismaService } from "../prisma/prisma.service";
 
 function preview(over: Partial<CartPreview> = {}): CartPreview {
@@ -57,6 +58,8 @@ function orderRow(over: Record<string, unknown> = {}) {
     petName: null,
     items: [
       {
+        // Ссылка на товар необязательная: он мог уехать из каталога.
+        productId: null as string | null,
         slug: "bandana-kletka",
         title: "Бандана «Клетка»",
         size: "M",
@@ -69,6 +72,11 @@ function orderRow(over: Record<string, unknown> = {}) {
   };
 }
 
+/** Заказ в том виде, в каком его читает `setStatus`: с `id` и покупателем. */
+function statusRow(over: Record<string, unknown> = {}) {
+  return { ...orderRow(), id: "o1", user: { telegramId: "777" }, ...over };
+}
+
 type Args = Record<string, unknown>;
 
 let cartPreview: ReturnType<typeof vi.fn>;
@@ -78,6 +86,10 @@ let findMany: ReturnType<typeof vi.fn>;
 let orderFindMany: ReturnType<typeof vi.fn>;
 let petUpsert: ReturnType<typeof vi.fn>;
 let notify: ReturnType<typeof vi.fn>;
+let notifyCustomer: ReturnType<typeof vi.fn>;
+let orderFindUnique: ReturnType<typeof vi.fn>;
+let orderUpdateMany: ReturnType<typeof vi.fn>;
+let orderFindUniqueOrThrow: ReturnType<typeof vi.fn>;
 let service: OrdersService;
 
 beforeEach(() => {
@@ -88,21 +100,30 @@ beforeEach(() => {
   orderFindMany = vi.fn(async (_args: Args) => [orderRow()]);
   petUpsert = vi.fn(async (_args: Args) => ({ id: "pet1" }));
   notify = vi.fn(async () => undefined);
+  notifyCustomer = vi.fn(async () => undefined);
+  orderFindUnique = vi.fn(async (_args: Args) => statusRow());
+  orderUpdateMany = vi.fn(async (_args: Args) => ({ count: 1 }));
+  orderFindUniqueOrThrow = vi.fn(async (_args: Args) => orderRow({ status: "CONFIRMED" }));
 
   const tx = {
     productSize: { updateMany },
     product: { findMany },
-    order: { create },
+    order: {
+      create,
+      updateMany: orderUpdateMany,
+      findUniqueOrThrow: orderFindUniqueOrThrow,
+    },
   };
 
   service = new OrdersService(
     {
       $transaction: (run: (client: typeof tx) => unknown) => run(tx),
-      order: { findMany: orderFindMany },
+      order: { findMany: orderFindMany, findUnique: orderFindUnique },
       pet: { upsert: petUpsert },
     } as unknown as PrismaService,
     { preview: cartPreview } as unknown as CartService,
     { notify } as unknown as ManagerNotifier,
+    { notify: notifyCustomer } as unknown as CustomerNotifier,
   );
 });
 
@@ -337,5 +358,122 @@ describe("OrdersService.list", () => {
     // Связь для этого не запрашивается вовсе.
     const args = orderFindMany.mock.calls[0]?.[0] as { include?: Record<string, unknown> };
     expect(args.include).not.toHaveProperty("pet");
+  });
+});
+
+describe("OrdersService.setStatus", () => {
+  it("переводит заказ в следующий статус", async () => {
+    const result = await service.setStatus(1, "CONFIRMED");
+
+    expect(result).toMatchObject({ ok: true, changed: true });
+    const args = orderUpdateMany.mock.calls[0]?.[0] as {
+      where: { id: string; status: string };
+      data: { status: string };
+    };
+    expect(args.data.status).toBe("CONFIRMED");
+    // Условие по текущему статусу обязательно: без него два одновременных
+    // нажатия провели бы переход дважды.
+    expect(args.where).toEqual({ id: "o1", status: "NEW" });
+  });
+
+  it("не находит несуществующий заказ", async () => {
+    orderFindUnique.mockResolvedValue(null);
+
+    expect(await service.setStatus(404, "CONFIRMED")).toEqual({ ok: false, reason: "not-found" });
+    expect(orderUpdateMany).not.toHaveBeenCalled();
+  });
+
+  // «Получен» — конец пути: из него нельзя ни в отправленные, ни куда-то ещё.
+  it("отказывает в переходе, которого нет", async () => {
+    orderFindUnique.mockResolvedValue(statusRow({ status: "DONE" }));
+
+    expect(await service.setStatus(1, "SHIPPED")).toEqual({ ok: false, reason: "not-allowed" });
+    expect(orderUpdateMany).not.toHaveBeenCalled();
+  });
+
+  // У менеджера в чате мог остаться старый экземпляр заявки со старыми
+  // кнопками: повторное нажатие — не ошибка, а «уже так и есть».
+  it("повторное нажатие того же статуса ничего не меняет и не считается отказом", async () => {
+    orderFindUnique.mockResolvedValue(statusRow({ status: "CONFIRMED" }));
+
+    const result = await service.setStatus(1, "CONFIRMED");
+
+    expect(result).toMatchObject({ ok: true, changed: false });
+    expect(orderUpdateMany).not.toHaveBeenCalled();
+    expect(notifyCustomer).not.toHaveBeenCalled();
+  });
+
+  // Кто-то успел перевести заказ, пока мы читали его из базы: условный update
+  // не сходится, и остатки не возвращаются во второй раз.
+  it("не проводит переход, если статус успели сменить между чтением и записью", async () => {
+    orderUpdateMany.mockResolvedValue({ count: 0 });
+
+    expect(await service.setStatus(1, "CANCELLED")).toEqual({ ok: false, reason: "not-allowed" });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  describe("отмена", () => {
+    beforeEach(() => {
+      orderFindUniqueOrThrow.mockResolvedValue(orderRow({ status: "CANCELLED" }));
+    });
+
+    it("возвращает остатки на склад", async () => {
+      await service.setStatus(1, "CANCELLED");
+
+      const args = updateMany.mock.calls[0]?.[0] as {
+        where: { product: { slug: string }; size: string };
+        data: { quantity: { increment: number } };
+      };
+      expect(args.where).toMatchObject({ product: { slug: "bandana-kletka" }, size: "M" });
+      expect(args.data.quantity.increment).toBe(2);
+    });
+
+    /**
+     * `OrderItem.slug` — слепок на момент покупки, а слаг товара в каталоге
+     * меняется: по нему остаток вернулся бы чужому товару, и молча — ноль
+     * изменённых строк здесь ожидаем.
+     */
+    it("возвращает по ссылке на товар, а не по слагу, если ссылка есть", async () => {
+      const row = statusRow();
+      row.items[0]!.productId = "p1";
+      orderFindUnique.mockResolvedValue(row);
+
+      await service.setStatus(1, "CANCELLED");
+
+      const args = updateMany.mock.calls[0]?.[0] as { where: Record<string, unknown> };
+      expect(args.where).toEqual({ productId: "p1", size: "M" });
+    });
+
+    // Товар мог уехать из каталога: возвращать остаток тогда некуда, но
+    // отмену это рвать не должно — заказ всё равно отменён.
+    it("переживает товар, которого больше нет в каталоге", async () => {
+      updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.setStatus(1, "CANCELLED")).resolves.toMatchObject({ ok: true });
+    });
+  });
+
+  it("остатки трогает только отмена", async () => {
+    await service.setStatus(1, "CONFIRMED");
+
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("говорит покупателю о новом статусе", async () => {
+    const result = await service.setStatus(1, "CONFIRMED");
+
+    expect(notifyCustomer).toHaveBeenCalledWith(
+      result.ok ? result.order : undefined,
+      // Личный чат покупателя — это его telegramId.
+      "777",
+    );
+  });
+
+  // Статус уже изменён: молчащий бот — повод посмотреть в лог, а не ронять
+  // нажатие, которое сработало.
+  it("не роняет смену статуса, если покупателю не написалось", async () => {
+    notifyCustomer.mockRejectedValue(new Error("bot blocked"));
+
+    await expect(service.setStatus(1, "CONFIRMED")).resolves.toMatchObject({ ok: true });
   });
 });

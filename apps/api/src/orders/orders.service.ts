@@ -10,6 +10,8 @@ import type {
 import { PrismaService } from "../prisma/prisma.service";
 import { CartService } from "../cart/cart.service";
 import { ManagerNotifier } from "./manager-notifier";
+import { CustomerNotifier } from "./customer-notifier";
+import { canGo, type TargetStatus } from "./order-status";
 
 /** Строка заказа в том виде, в каком её отдаёт Prisma. */
 type ItemRow = {
@@ -71,6 +73,16 @@ function toOrder(row: OrderRow): Order {
  */
 const INCLUDE = { items: true } as const;
 
+/**
+ * Чем закончилась смена статуса.
+ *
+ * Результатом, а не исключением: причину показывают менеджеру всплывающей
+ * подсказкой на кнопке, и «не найден» от «так нельзя» там отличаются текстом.
+ */
+export type StatusChange =
+  | { ok: true; order: Order; changed: boolean }
+  | { ok: false; reason: "not-found" | "not-allowed" };
+
 @Injectable()
 export class OrdersService {
   private readonly log = new Logger(OrdersService.name);
@@ -79,6 +91,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly cart: CartService,
     private readonly notifier: ManagerNotifier,
+    private readonly customer: CustomerNotifier,
   ) {}
 
   /**
@@ -186,6 +199,78 @@ export class OrdersService {
       );
 
     return order;
+  }
+
+  /**
+   * Смена статуса менеджером.
+   *
+   * Исключения не бросает: зовут отсюда не HTTP-ручку, а нажатие кнопки в
+   * чате, и на него надо ответить словами («заказ не найден», «из этого
+   * статуса так нельзя»), а не пятисоткой в лог.
+   */
+  async setStatus(number: number, next: TargetStatus): Promise<StatusChange> {
+    const found = await this.prisma.order.findUnique({
+      where: { number },
+      include: { ...INCLUDE, user: { select: { telegramId: true } } },
+    });
+    if (!found) return { ok: false, reason: "not-found" };
+
+    const current = found.status as OrderStatus;
+    // Повторное нажатие той же кнопки — не ошибка: у менеджера в чате мог
+    // остаться старый экземпляр сообщения. Отвечаем тем, что уже так и есть.
+    if (current === next) return { ok: true, order: toOrder(found), changed: false };
+    if (!canGo(current, next)) return { ok: false, reason: "not-allowed" };
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Условный `updateMany` вместо `update`: две кнопки, нажатые почти
+      // одновременно (или два менеджера), иначе вернули бы остатки дважды.
+      // Не сошёлся статус — значит, кто-то успел раньше, и делать нечего.
+      const changed = await tx.order.updateMany({
+        where: { id: found.id, status: current },
+        data: { status: next },
+      });
+      if (changed.count === 0) return null;
+
+      if (next === "CANCELLED") {
+        // Порядок возврата — тот же детерминированный, что у списания при
+        // оформлении: иначе отмена и заказ на те же товары в разном порядке
+        // блокируют строки крест-накрест и дают дедлок Postgres (40P01).
+        const items = [...found.items].sort((a, b) =>
+          a.slug === b.slug ? a.size.localeCompare(b.size) : a.slug.localeCompare(b.slug),
+        );
+        for (const item of items) {
+          // По ссылке на товар, а если её нет — по слагу. `OrderItem.slug` это
+          // слепок на момент покупки, а `Product.slug` меняется: товар,
+          // которому слаг переписали, вернул бы остаток чужому товару, молча —
+          // ноль изменённых строк здесь ожидаем и не считается ошибкой.
+          const product = item.productId
+            ? { productId: item.productId }
+            : { product: { slug: item.slug } };
+          // `updateMany`, а не `update`: товар мог уехать из каталога, и
+          // возвращать остаток тогда некуда — это не повод рвать отмену.
+          await tx.productSize.updateMany({
+            where: { ...product, size: item.size },
+            data: { quantity: { increment: item.quantity } },
+          });
+        }
+      }
+
+      return tx.order.findUniqueOrThrow({ where: { id: found.id }, include: INCLUDE });
+    });
+
+    if (!updated) return { ok: false, reason: "not-allowed" };
+
+    const order = toOrder(updated);
+
+    // Как и заявка менеджеру: не в транзакции и без ожидания. `catch`
+    // обязателен — под Node 22 необработанный rejection роняет процесс.
+    void this.customer
+      .notify(order, found.user.telegramId)
+      .catch((error: unknown) =>
+        this.log.error(`Покупателю не сказали о статусе заказа ${order.number}: ${String(error)}`),
+      );
+
+    return { ok: true, order, changed: true };
   }
 
   /** Заказы покупателя, свежие сверху. */
