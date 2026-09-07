@@ -3,8 +3,8 @@
  *
  * Тонкая обёртка над `window.Telegram.WebApp` из официального
  * `telegram-web-app.js`, а не `@telegram-apps/sdk`, который упомянут в
- * `ARCHITECTURE.md`. Причина: из всего SDK нужны `initData`, тема и кнопка
- * «назад» — на это уходит меньше кода, чем весит сам SDK, а его модель
+ * `ARCHITECTURE.md`. Причина: из всего SDK нужны `initData`, тема, полный
+ * экран и отступы — на это уходит меньше кода, чем весит сам SDK, а его модель
  * инициализации пришлось бы всё равно оборачивать. Если понадобятся платежи,
  * биометрия или облачное хранилище — SDK вернётся, и заменить придётся
  * ровно этот файл.
@@ -12,6 +12,14 @@
  * Вне Telegram (обычный браузер, тесты, витрина) объекта нет, и приложение
  * работает как гость: каталог публичный, вход просто не происходит.
  */
+
+/** Отступы со всех сторон, как их отдаёт клиент. */
+interface Insets {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}
 
 /** То, чем мы пользуемся из `window.Telegram.WebApp`. */
 interface TelegramWebApp {
@@ -21,14 +29,15 @@ interface TelegramWebApp {
   colorScheme?: "light" | "dark";
   ready: () => void;
   expand?: () => void;
+  /** Есть с Bot API 8.0. Вне его — метода просто нет, и это нормально. */
+  requestFullscreen?: () => void;
+  isVersionAtLeast?: (version: string) => boolean;
+  /** Вырез и скруглённые углы устройства. Bot API 8.0. */
+  safeAreaInset?: Insets;
+  /** Место, занятое собственными кнопками клиента поверх приложения. 8.0. */
+  contentSafeAreaInset?: Insets;
   onEvent?: (event: string, handler: () => void) => void;
   offEvent?: (event: string, handler: () => void) => void;
-  BackButton?: {
-    show: () => void;
-    hide: () => void;
-    onClick: (handler: () => void) => void;
-    offClick: (handler: () => void) => void;
-  };
 }
 
 declare global {
@@ -65,16 +74,87 @@ export function initData(): string {
 }
 
 /**
- * Сообщить Telegram, что интерфейс готов, и развернуть окно на всю высоту.
+ * Версия Mini App, с которой Telegram умеет полноэкранный режим.
+ *
+ * Проверять обязательно: у клиента постарше метода нет вовсе, а `?.` спасёт
+ * от падения, но не от того, что приложение молча останется в шапке.
+ */
+const FULLSCREEN_SINCE = "8.0";
+
+/**
+ * Сообщить Telegram, что интерфейс готов, развернуть окно и убрать его шапку.
  *
  * Без `ready()` клиент держит заставку, без `expand()` Mini App открывается
  * половиной экрана — на каталоге это половина первого ряда плиток.
+ *
+ * **`requestFullscreen()` — потому что иначе вид зависит от способа запуска.**
+ * Из кнопки меню бота клиент рисует сверху свою полосу с именем бота и
+ * «Назад», а из чата приложение открывается без неё. Один и тот же магазин
+ * выглядел по-разному в зависимости от того, откуда в него зашли. Полный экран
+ * убирает полосу везде: остаются только плавающие кнопки клиента поверх
+ * содержимого, а место под них резервирует `--safe-top` (см. `followInsets`).
+ *
+ * Отказ не обрабатываем: клиент отвечает на него событием `fullscreenFailed`,
+ * а приложение при этом остаётся ровно тем, чем было до просьбы, — работающим
+ * в обычном режиме.
  */
 export function start(): void {
   const webApp = app();
   if (!webApp || !inTelegram()) return;
   webApp.ready();
   webApp.expand?.();
+  if (webApp.isVersionAtLeast?.(FULLSCREEN_SINCE)) webApp.requestFullscreen?.();
+}
+
+/**
+ * События, после которых отступы могут стать другими.
+ *
+ * `viewportChanged` в списке не для красоты: на части клиентов вебвью меняет
+ * размер уже после входа в полный экран, и без него первая отрисовка осталась
+ * бы с отступами предыдущего режима.
+ */
+const INSET_EVENTS = [
+  "safeAreaChanged",
+  "contentSafeAreaChanged",
+  "fullscreenChanged",
+  "viewportChanged",
+];
+
+/**
+ * Отступы клиента в токены кита `--safe-top` / `--safe-bottom`.
+ *
+ * В полном экране приложение рисует под вырезом устройства и под плавающими
+ * кнопками самого Telegram — заголовок раздела оказался бы под часами, а
+ * «Закрыть» легло бы на кнопку поиска. Клиент отдаёт оба запаса отдельно:
+ * `safeAreaInset` — это устройство (вырез, скруглённые углы), а
+ * `contentSafeAreaInset` — его собственные кнопки. Складываем: занято и то, и
+ * другое.
+ *
+ * **Токены не трогаем, если клиент отступов не даёт** (Bot API младше 8.0,
+ * обычный браузер, тесты). В ките они посчитаны из `env(safe-area-inset-*)`,
+ * и записать туда ноль значило бы стереть рабочее значение ради пустого.
+ */
+export function followInsets(): () => void {
+  const webApp = inTelegram() ? app() : undefined;
+
+  const apply = () => {
+    const safe = webApp?.safeAreaInset;
+    const content = webApp?.contentSafeAreaInset;
+    if (!safe && !content) return;
+
+    const sum = (side: keyof Insets) => (safe?.[side] ?? 0) + (content?.[side] ?? 0);
+    const root = document.documentElement.style;
+    root.setProperty("--safe-top", `${sum("top")}px`);
+    root.setProperty("--safe-bottom", `${sum("bottom")}px`);
+  };
+
+  apply();
+  if (!webApp?.onEvent) return () => undefined;
+
+  for (const event of INSET_EVENTS) webApp.onEvent(event, apply);
+  return () => {
+    for (const event of INSET_EVENTS) webApp.offEvent?.(event, apply);
+  };
 }
 
 /**
@@ -95,25 +175,6 @@ export function followTheme(): () => void {
 
   webApp.onEvent("themeChanged", apply);
   return () => webApp.offEvent?.("themeChanged", apply);
-}
-
-/**
- * Нативная кнопка «назад» Telegram.
- *
- * Своя кнопка в шапке остаётся для браузера. Внутри Telegram она прячется:
- * две кнопки «назад» рядом — это не забота, а вопрос «какая из них моя».
- * Возвращает функцию отписки; `undefined` — кнопки нет, рисуем свою.
- */
-export function attachNativeBack(onBack: () => void): (() => void) | undefined {
-  const button = inTelegram() ? app()?.BackButton : undefined;
-  if (!button) return undefined;
-
-  button.onClick(onBack);
-  button.show();
-  return () => {
-    button.offClick(onBack);
-    button.hide();
-  };
 }
 
 /**

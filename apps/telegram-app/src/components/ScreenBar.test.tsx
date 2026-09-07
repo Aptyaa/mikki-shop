@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ScreenBar } from "./ScreenBar";
 import { ScreenLayer } from "./ScreenLayer";
 
+/** Заглушка нативной кнопки: её не должно трогать даже внутри клиента. */
 const back = {
   show: vi.fn(),
   hide: vi.fn(),
@@ -27,109 +28,38 @@ function enterTelegram() {
   };
 }
 
-/** Тот же скрипт, но в обычном браузере: объект есть, клиента нет. */
-function browserWithScript() {
-  window.Telegram = {
-    WebApp: {
-      initData: "",
-      platform: "unknown",
-      ready: vi.fn(),
-      onEvent: vi.fn(),
-      offEvent: vi.fn(),
-      BackButton: back,
-    } as never,
-  };
-}
-
-beforeEach(() => {
-  back.onClick.mockImplementation((handler: () => void) => {
-    (back as unknown as { handler?: () => void }).handler = handler;
-  });
-});
-
 afterEach(() => {
   cleanup();
   delete window.Telegram;
   vi.clearAllMocks();
 });
 
-describe("ScreenBar — Микки у заголовка", () => {
-  it("ставит голову в заголовок, а знак по центру убирает", () => {
+describe("ScreenBar — заголовок", () => {
+  // Маскот из шапки убран: на телефоне голова за названием раздела читалась
+  // пятном. Заголовок остался текстом, и никаких картинок в полосе нет.
+  it("рисует заголовок текстом, без картинок", () => {
     const { container } = render(<ScreenBar title="Каталог" />);
-
-    const images = [...container.querySelectorAll("img")];
-    expect(images).toHaveLength(1);
-    expect(images[0]?.getAttribute("src")).toContain("mascot-head");
-  });
-
-  /**
-   * Заголовок лежит одним куском: голова цепляется к правому краю слова, а не
-   * к последней букве, поэтому резать текст не нужно вовсе.
-   */
-  it("оставляет заголовок целым текстом", () => {
-    render(<ScreenBar title="Каталог" />);
 
     expect(screen.getByText("Каталог")).toBeTruthy();
-  });
-
-  /**
-   * Обрезка по колонке остаётся: длинный заголовок не должен наезжать на
-   * кнопки справа. Голове при этом разрешено рисовать за границей — иначе
-   * обрезка съела бы её.
-   */
-  it("режет длинный заголовок по колонке, но выпускает голову наружу", () => {
-    const { container } = render(<ScreenBar title="Каталог" />);
-
-    const title = [...container.querySelectorAll("span")].find((node) =>
-      (node.getAttribute("style") ?? "").includes("overflow"),
-    );
-    const style = title?.getAttribute("style") ?? "";
-    expect(style).toContain("overflow: clip");
-    expect(style).toContain("overflow-clip-margin");
-    expect(style).toContain("text-overflow: ellipsis");
-  });
-
-  // Голова — украшение рядом с текстом, который и так называет раздел.
-  // «Микки Шоп» посреди заголовка скринридер читать не должен.
-  it("голова не подмешивает своё имя в заголовок", () => {
-    const { container } = render(<ScreenBar title="Каталог" />);
-
-    const head = container.querySelector("img");
-    expect(head).toHaveAttribute("alt", "");
-    expect(head).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelectorAll("img")).toHaveLength(0);
     expect(container.textContent).toBe("Каталог");
   });
 
-  /**
-   * У карточки товара заголовка нет вовсе: длинное название категории наезжало
-   * бы на знак. Цеплять голову там не к чему, и знак остаётся по центру полосы,
-   * как было до этой правки.
-   */
-  it("без заголовка возвращает знак по центру", () => {
+  it("экран без заголовка обходится пустой полосой", () => {
     const { container } = render(<ScreenBar />);
 
-    const images = [...container.querySelectorAll("img")];
-    expect(images).toHaveLength(1);
-    expect(images[0]?.getAttribute("src")).toContain("mascot-mark");
+    expect(container.querySelectorAll("img")).toHaveLength(0);
   });
 
-  it("пустой заголовок считает отсутствующим", () => {
-    const { container } = render(<ScreenBar title="" />);
-
-    expect(container.querySelector("img")?.getAttribute("src")).toContain("mascot-mark");
-  });
-
-  // Заголовок бывает и не строкой — разрезать на буквы можно только строку.
   it("нестроковый заголовок оставляет как есть", () => {
-    const { container } = render(<ScreenBar title={<b>Готово</b>} />);
+    render(<ScreenBar title={<b>Готово</b>} />);
 
     expect(screen.getByText("Готово")).toBeTruthy();
-    expect(container.querySelector("img")?.getAttribute("src")).toContain("mascot-mark");
   });
 });
 
-describe("ScreenBar вне Telegram", () => {
-  it("рисует свою кнопку «назад»", () => {
+describe("ScreenBar — кнопка «назад»", () => {
+  it("рисует свою кнопку и зовёт обработчик", () => {
     const onBack = vi.fn();
     render(<ScreenBar title="Корзина" onBack={onBack} />);
 
@@ -143,109 +73,44 @@ describe("ScreenBar вне Telegram", () => {
 
     expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
   });
-});
 
-// Скрипт Telegram подключён в `index.html` безусловно и создаёт заглушки
-// кнопок в любом браузере. Понадеявшись на них, шапка спрятала бы свою
-// кнопку ради нативной, которой нет, — и уйти с карточки было бы нечем.
-describe("ScreenBar в браузере со скриптом Telegram", () => {
-  beforeEach(browserWithScript);
-
-  it("рисует свою кнопку и не трогает заглушку клиента", () => {
+  /**
+   * Главное в этой правке: внутри Telegram шапка ведёт себя ровно так же, как
+   * в браузере. Нативную кнопку не занимаем — клиент показывает «Закрыть», и
+   * навигация внутри приложения остаётся целиком нашей.
+   */
+  it("внутри Telegram рисует свою кнопку и не трогает нативную", () => {
+    enterTelegram();
     const onBack = vi.fn();
     render(<ScreenBar title="Корзина" onBack={onBack} />);
 
     expect(back.show).not.toHaveBeenCalled();
+    expect(back.onClick).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByRole("button", { name: "Назад" }));
     expect(onBack).toHaveBeenCalled();
   });
-});
 
-describe("ScreenBar внутри Telegram", () => {
-  beforeEach(enterTelegram);
-
-  // Две кнопки «назад» рядом — это не забота, а вопрос «какая из них моя».
-  it("отдаёт кнопку клиенту и свою не рисует", () => {
-    const onBack = vi.fn();
-    render(<ScreenBar title="Корзина" onBack={onBack} />);
-
-    expect(back.show).toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
-
-    (back as unknown as { handler?: () => void }).handler?.();
-    expect(onBack).toHaveBeenCalled();
-  });
-
-  it("отпускает кнопку, когда экран уходит", () => {
-    const { unmount } = render(<ScreenBar title="Корзина" onBack={vi.fn()} />);
-
-    unmount();
-
-    expect(back.hide).toHaveBeenCalled();
-    expect(back.offClick).toHaveBeenCalled();
-  });
-
-  it("без onBack кнопку не трогает", () => {
-    render(<ScreenBar title="Каталог" />);
-
-    expect(back.show).not.toHaveBeenCalled();
-  });
-});
-
-describe("ScreenBar на скрытом слое", () => {
-  beforeEach(enterTelegram);
-
-  // Каталог и карточка не размонтируются под экраном поверх них. Без учёта
-  // видимости кнопка «назад» карточки осталась бы висеть в каталоге —
-  // ровно этот баг и нашёлся в браузере.
-  it("не забирает кнопку, пока экран спрятан", () => {
+  // Каталог и карточка не размонтируются под экраном поверх них. Скрытый слой
+  // выпадает из дерева доступности — иначе покупатель нашёл бы в каталоге
+  // кнопку «назад» от карточки.
+  it("на скрытом слое кнопки не найти", () => {
     render(
       <ScreenLayer hidden>
         <ScreenBar title="Товар" onBack={vi.fn()} />
       </ScreenLayer>,
     );
 
-    expect(back.show).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
   });
 
-  it("забирает кнопку, когда экран показан", () => {
+  it("на показанном слое кнопка на месте", () => {
     render(
       <ScreenLayer hidden={false}>
         <ScreenBar title="Товар" onBack={vi.fn()} />
       </ScreenLayer>,
     );
 
-    expect(back.show).toHaveBeenCalled();
-  });
-
-  it("отпускает кнопку, когда экран прячут", () => {
-    const onBack = vi.fn();
-    const { rerender } = render(
-      <ScreenLayer hidden={false}>
-        <ScreenBar title="Товар" onBack={onBack} />
-      </ScreenLayer>,
-    );
-
-    rerender(
-      <ScreenLayer hidden>
-        <ScreenBar title="Товар" onBack={onBack} />
-      </ScreenLayer>,
-    );
-
-    expect(back.hide).toHaveBeenCalled();
-  });
-
-  // Скрытый слой выпадает и из дерева доступности: своей кнопки на нём нет
-  // ни для глаз, ни для скринридера, а нативную он не занимает. Иначе
-  // покупатель нашёл бы в каталоге кнопку «назад» от карточки.
-  it("на скрытом слое кнопки нет ни своей, ни нативной", () => {
-    render(
-      <ScreenLayer hidden>
-        <ScreenBar title="Товар" onBack={vi.fn()} />
-      </ScreenLayer>,
-    );
-
-    expect(back.show).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Назад" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Назад" })).toBeTruthy();
   });
 });

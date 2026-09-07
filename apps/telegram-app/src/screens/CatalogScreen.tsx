@@ -20,7 +20,7 @@ import type { CatalogSize, CatalogSort } from "@mikki-shop/shared-types";
 import { fetchCategories, fetchProducts } from "../api/catalog";
 import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
-import { goBack, navigate } from "../lib/route";
+import { navigate } from "../lib/route";
 import { plural } from "../lib/plural";
 
 const SORTS: { key: CatalogSort; label: string }[] = [
@@ -139,10 +139,14 @@ export function CatalogScreen({ initialCategory }: CatalogScreenProps = {}) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
+      {/* Стрелки «назад» нет: экран открывается вкладкой нижнего бара, а
+          вкладки не кладут запись в историю — переход между ними это один и
+          тот же уровень, а не путь вглубь (см. `AppTabs`). Кнопка обещала бы
+          возврат туда, откуда пришли, а делала бы выход из приложения. Назад
+          отсюда — сам бар. */}
       <ScreenBar
         title="Каталог"
         subtitle={head ? models(total) : undefined}
-        onBack={goBack}
         right={
           <div style={{ display: "flex", gap: "var(--sp-2)" }}>
             <IconButton label="Поиск" active={searchOpen} onClick={toggleSearch}>

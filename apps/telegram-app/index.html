@@ -2,7 +2,10 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover` — не украшение: без него env(safe-area-inset-*)
+         всегда 0, а на нём держится запас под вырез у клиентов, которые не
+         умеют отдавать отступы сами (Bot API младше 8.0) и в обычном Safari. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Микки Шоп</title>
     <!-- Официальный клиент Mini App. Грузится с telegram.org, а не из npm:
          Telegram обновляет его вместе со своими приложениями, и запиненная

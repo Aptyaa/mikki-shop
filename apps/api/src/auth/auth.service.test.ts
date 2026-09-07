@@ -1,5 +1,6 @@
 import "reflect-metadata";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import type { JwtService } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
@@ -52,6 +53,71 @@ beforeEach(() => {
     { sign } as unknown as JwtService,
     { get: (key: string) => (key === "TELEGRAM_BOT_TOKEN" ? botToken : undefined) } as ConfigService,
   );
+});
+
+/**
+ * Проверка токена на старте.
+ *
+ * Токен с опечаткой неотличим от подделки: `initData` настоящий, подпись не
+ * сходится, в логе `bad-signature`. Ровно так один такой токен и прожил вечер,
+ * пока приложение молча держало покупателя гостем.
+ */
+describe("AuthService.onModuleInit — проверка токена", () => {
+  const fetchStub = (impl: () => Promise<unknown>) =>
+    vi.stubGlobal("fetch", vi.fn(impl));
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("говорит вслух, когда Telegram не принял токен", async () => {
+    const error = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    fetchStub(async () => ({
+      status: 401,
+      json: async () => ({ ok: false, error_code: 401, description: "Unauthorized" }),
+    }));
+
+    await service.onModuleInit();
+
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("отвергнут Telegram (401)"));
+  });
+
+  it("на живом токене называет бота и молчит про ошибки", async () => {
+    const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    const error = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    fetchStub(async () => ({
+      status: 200,
+      json: async () => ({ ok: true, result: { username: "MikkiShop_bot" } }),
+    }));
+
+    await service.onModuleInit();
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("@MikkiShop_bot"));
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  // Проверка — удобство, а не условие работы: сама подпись сети не требует,
+  // и закрытый выход наружу не должен ронять приложение.
+  it("переживает недоступный Telegram", async () => {
+    const error = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    fetchStub(async () => {
+      throw new Error("ENOTFOUND api.telegram.org");
+    });
+
+    await expect(service.onModuleInit()).resolves.toBeUndefined();
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("без токена наружу не ходит вовсе", async () => {
+    botToken = "";
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await service.onModuleInit();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("AuthService.login", () => {

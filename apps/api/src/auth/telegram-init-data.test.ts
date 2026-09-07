@@ -48,6 +48,37 @@ describe("verifyInitData — подпись", () => {
     });
   });
 
+  /**
+   * Форма живого клиента: `signature` (Bot API 7.10) в данных есть и **входит**
+   * в строку подписи.
+   *
+   * Документация Telegram говорит обратное — исключать `signature` наравне с
+   * `hash`. Сделали по документации, и настоящий вход с телефона стал
+   * отвергаться как `bad-signature`; перебор вариантов строки прямо на
+   * пришедших данных показал, что сходится именно этот. Принимаем оба, а тесты
+   * держат оба, чтобы следующая правка «по документации» уронила их, а не
+   * покупателя.
+   */
+  it("принимает форму живого клиента: signature внутри подписи", () => {
+    const signed = initData({ signature: "3PXCkoP6R5wJq3n3cQhtMOaz_ed25519" });
+
+    expect(verifyInitData(signed, TOKEN, NOW)).toMatchObject({ ok: true });
+  });
+
+  it("принимает и форму из документации: signature вне подписи", () => {
+    const signed = signInitData(
+      {
+        user: JSON.stringify(USER),
+        auth_date: String(Math.floor(NOW.getTime() / 1000)),
+        signature: "3PXCkoP6R5wJq3n3cQhtMOaz_ed25519",
+      },
+      TOKEN,
+      ["hash", "signature"],
+    );
+
+    expect(verifyInitData(signed, TOKEN, NOW)).toMatchObject({ ok: true });
+  });
+
   it("отвергает подмену любого поля после подписи", () => {
     const tampered = initData().replace("5140053721", "5140053722");
 

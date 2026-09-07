@@ -21,7 +21,7 @@ import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
 import { useAuth } from "../lib/auth";
 import { plural } from "../lib/plural";
-import { goBack, navigate } from "../lib/route";
+import { navigate } from "../lib/route";
 
 /**
  * Размерная сетка для выбора размера питомца.
@@ -229,7 +229,12 @@ export function ProfileScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
-      <ScreenBar title="Профиль" onBack={goBack} />
+      {/* Стрелки «назад» нет: экран открывается вкладкой нижнего бара, а
+          вкладки не кладут запись в историю — переход между ними это один и
+          тот же уровень, а не путь вглубь (см. `AppTabs`). Кнопка обещала бы
+          возврат туда, откуда пришли, а делала бы выход из приложения. Назад
+          отсюда — сам бар. */}
+      <ScreenBar title="Профиль" />
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
         padding: "var(--sp-5) var(--gutter) var(--sp-6)" }}>

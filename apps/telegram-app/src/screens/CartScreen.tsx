@@ -15,7 +15,7 @@ import { AppTabs } from "../components/AppTabs";
 import { ScreenBar } from "../components/ScreenBar";
 import { cartKey, toCartInput, useCart } from "../lib/cart";
 import { plural } from "../lib/plural";
-import { goBack, navigate } from "../lib/route";
+import { navigate } from "../lib/route";
 
 const goods = (count: number) => `${count} ${plural(count, "товар", "товара", "товаров")}`;
 
@@ -103,10 +103,14 @@ export function CartScreen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh",
       maxWidth: "var(--content-max)", margin: "0 auto", background: "var(--bg-page)" }}>
+      {/* Стрелки «назад» нет: экран открывается вкладкой нижнего бара, а
+          вкладки не кладут запись в историю — переход между ними это один и
+          тот же уровень, а не путь вглубь (см. `AppTabs`). Кнопка обещала бы
+          возврат туда, откуда пришли, а делала бы выход из приложения. Назад
+          отсюда — сам бар. */}
       <ScreenBar
         title="Корзина"
         subtitle={data && count > 0 ? goods(count) : undefined}
-        onBack={goBack}
       />
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
