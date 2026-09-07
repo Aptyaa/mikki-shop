@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import type { DeliveryMethod, Order } from "@mikki-shop/shared-types";
+import { AdminsService } from "../admins/admins.service";
 import { TelegramApi } from "../bot/telegram-api";
 import { STATUS_LABEL, statusKeyboard } from "./order-status";
 
@@ -24,7 +24,12 @@ const money = (value: number): string =>
  * сегодня: менеджер работает с телефона, из того же чата, куда пришла заявка,
  * и отдельного экрана ради четырёх кнопок заводить незачем.
  *
- * Без `MANAGER_CHAT_ID` (или без токена бота) уведомление пишется в лог, а
+ * Заявка уходит всем, у кого есть доступ: в чат заявок, владельцу и каждому
+ * приглашённому менеджеру. Кнопки нажимает тот, кто взял заказ, — его копия
+ * переписывается сразу, а чужие догоняют при первом же нажатии (текст
+ * сравнивается с тем, что в чате, и отставшая копия обновляется).
+ *
+ * Некому отправить (нет ни бота, ни доступов) — уведомление пишется в лог, а
  * заказы при этом оформляются.
  */
 @Injectable()
@@ -32,27 +37,29 @@ export class ManagerNotifier {
   private readonly log = new Logger(ManagerNotifier.name);
 
   constructor(
-    private readonly config: ConfigService,
+    private readonly admins: AdminsService,
     private readonly telegram: TelegramApi,
   ) {}
 
   async notify(order: Order): Promise<void> {
     const text = format(order);
-    const chatId = this.config.get<string>("MANAGER_CHAT_ID");
+    const chatIds = this.telegram.enabled ? await this.admins.notifyChatIds() : [];
 
-    if (!this.telegram.enabled || !chatId) {
-      this.log.log(`Новая заявка (некому отправить, MANAGER_CHAT_ID не задан):\n${text}`);
+    if (chatIds.length === 0) {
+      this.log.log(`Новая заявка (некому отправить, доступы не заданы):\n${text}`);
       return;
     }
 
-    const sent = await this.telegram.call("sendMessage", {
-      chat_id: chatId,
-      text,
-      reply_markup: statusKeyboard(order.number, order.status),
-    });
-    // Причину уже назвал `TelegramApi`; здесь важно, какая именно заявка
-    // осталась ненайденной, — по номеру её достают из базы руками.
-    if (!sent) this.log.error(`Заявка ${order.number} не ушла менеджеру`);
+    const reply_markup = statusKeyboard(order.number, order.status);
+    // Последовательно, а не `Promise.all`: заявок в минуту единицы, зато
+    // Telegram не отдаёт 429 за пачку одновременных отправок.
+    for (const chatId of chatIds) {
+      const sent = await this.telegram.call("sendMessage", { chat_id: chatId, text, reply_markup });
+      // Причину уже назвал `TelegramApi`; здесь важно, какая заявка и кому не
+      // дошла: по номеру её достают из базы руками, а по чату — понимают, что
+      // человек, например, не начинал переписку с ботом.
+      if (!sent) this.log.error(`Заявка ${order.number} не ушла в чат ${chatId}`);
+    }
   }
 }
 

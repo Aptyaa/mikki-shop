@@ -2,9 +2,10 @@ import "reflect-metadata";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Order } from "@mikki-shop/shared-types";
 import type { ConfigService } from "@nestjs/config";
-import { BotService } from "./bot.service";
+import { BotService, parseCommand } from "./bot.service";
 import type { TelegramApi } from "./telegram-api";
 import type { OrdersService, StatusChange } from "../orders/orders.service";
+import type { AdminsService } from "../admins/admins.service";
 import { format } from "../orders/manager-notifier";
 
 const MANAGER = 777;
@@ -52,6 +53,12 @@ type Payload = Record<string, unknown>;
 
 let call: ReturnType<typeof vi.fn>;
 let setStatus: ReturnType<typeof vi.fn>;
+let isAdmin: ReturnType<typeof vi.fn>;
+let isOwner: ReturnType<typeof vi.fn>;
+let acceptInvite: ReturnType<typeof vi.fn>;
+let createInvite: ReturnType<typeof vi.fn>;
+let listAdmins: ReturnType<typeof vi.fn>;
+let revoke: ReturnType<typeof vi.fn>;
 let env: Record<string, string>;
 let bot: BotService;
 
@@ -62,15 +69,53 @@ function payloadOf(method: string): Payload | undefined {
 }
 
 beforeEach(() => {
-  call = vi.fn(async () => ({}));
+  call = vi.fn(async (method: string) =>
+    method === "getMe" ? { username: "MikkiWithLove_bot" } : {},
+  );
   setStatus = vi.fn(
     async (): Promise<StatusChange> => ({ ok: true, order: order(), changed: true }),
   );
+  // По умолчанию доступ только у владельца — он же получатель заявок.
+  isAdmin = vi.fn(async (id: string) => id === String(MANAGER));
+  isOwner = vi.fn((id: string) => id === String(MANAGER));
+  acceptInvite = vi.fn(async () => ({ ok: true, userId: "u1", invitedBy: String(MANAGER) }));
+  createInvite = vi.fn(async () => ({
+    code: "SGVsbG8gd29ybGQh",
+    expiresAt: new Date("2026-09-08T12:00:00Z"),
+  }));
+  listAdmins = vi.fn(async () => ({
+    invited: [
+      {
+        userId: "u0",
+        telegramId: String(MANAGER),
+        username: "den",
+        firstName: "Денис",
+        role: "OWNER" as const,
+      },
+      {
+        userId: "u1",
+        telegramId: "555",
+        username: null,
+        firstName: "Аня",
+        role: "ADMIN" as const,
+      },
+    ],
+    fromEnv: [],
+  }));
+  revoke = vi.fn(async () => ({ ok: true, telegramId: "555", name: "Аня" }));
   env = { MANAGER_CHAT_ID: String(MANAGER) };
 
   bot = new BotService(
     { enabled: true, call } as unknown as TelegramApi,
     { setStatus } as unknown as OrdersService,
+    {
+      isAdmin,
+      isOwner,
+      acceptInvite,
+      createInvite,
+      list: listAdmins,
+      revoke,
+    } as unknown as AdminsService,
     { get: (key: string) => env[key] } as unknown as ConfigService,
   );
 });
@@ -124,21 +169,15 @@ describe("BotService — кнопки статуса", () => {
     expect(payloadOf("answerCallbackQuery")).toMatchObject({ text: "Это кнопка менеджера" });
   });
 
-  it("пускает всех перечисленных в ADMIN_TELEGRAM_IDS, а не только владельца чата заявок", async () => {
-    env = { MANAGER_CHAT_ID: "-100500", ADMIN_TELEGRAM_IDS: `111, ${STRANGER}` };
+  // Права спрашиваются у списка доступов, а не у переменной окружения:
+  // приглашённый менеджер жмёт те же кнопки.
+  it("пускает приглашённого менеджера", async () => {
+    isAdmin.mockResolvedValue(true);
 
     await bot.handleUpdate(press({ from: { id: STRANGER } }));
 
+    expect(isAdmin).toHaveBeenCalledWith(String(STRANGER));
     expect(setStatus).toHaveBeenCalled();
-  });
-
-  // Пусто — не может никто: безопасный отказ, а не «можно всем».
-  it("никого не пускает, когда менеджеры не заданы", async () => {
-    env = {};
-
-    await bot.handleUpdate(press());
-
-    expect(setStatus).not.toHaveBeenCalled();
   });
 
   it("отвечает на нажатие даже с непонятными данными", async () => {
@@ -266,5 +305,199 @@ describe("BotService — /start", () => {
     await bot.handleUpdate(start("привет"));
 
     expect(call).not.toHaveBeenCalled();
+  });
+});
+
+describe("BotService — приглашение менеджеров", () => {
+  const message = (text: string, from = MANAGER, chat = from) => ({
+    update_id: 4,
+    message: { chat: { id: chat }, from: { id: from, username: "den", first_name: "Денис" }, text },
+  });
+
+  it("выдаёт владельцу одноразовую ссылку", async () => {
+    await bot.handleUpdate(message("/invite"));
+
+    expect(createInvite).toHaveBeenCalledWith(String(MANAGER));
+    const sent = payloadOf("sendMessage") as { text: string };
+    expect(sent.text).toContain("https://t.me/MikkiWithLove_bot?start=admin_SGVsbG8gd29ybGQh");
+    expect(sent.text).toContain("Одноразовая");
+  });
+
+  /**
+   * Живая одноразовая ссылка в общей группе — это менеджер из любого, кто успел
+   * её нажать. Владелец при этом настоящий, поэтому проверки «кто» мало.
+   */
+  it("не выкладывает ссылку в группу даже владельцу", async () => {
+    await bot.handleUpdate(message("/invite@MikkiBot", MANAGER, -100500));
+
+    expect(createInvite).not.toHaveBeenCalled();
+    expect(payloadOf("sendMessage")?.text).toContain("в личном чате");
+  });
+
+  it("не показывает список доступов в группе", async () => {
+    await bot.handleUpdate(message("/admins", MANAGER, -100500));
+
+    expect(listAdmins).not.toHaveBeenCalled();
+  });
+
+  // Иначе менеджер, которому дали кнопки, заводил бы себе новых менеджеров.
+  it("не выдаёт ссылку никому, кроме владельца", async () => {
+    await bot.handleUpdate(message("/invite", STRANGER));
+
+    expect(createInvite).not.toHaveBeenCalled();
+    expect(payloadOf("sendMessage")?.text).toContain("только владелец");
+  });
+
+  it("принимает приглашение по ссылке и говорит об этом владельцу", async () => {
+    await bot.handleUpdate(message("/start admin_SGVsbG8gd29ybGQh", STRANGER));
+
+    expect(acceptInvite).toHaveBeenCalledWith("SGVsbG8gd29ybGQh", {
+      telegramId: String(STRANGER),
+      username: "den",
+      firstName: "Денис",
+      lastName: undefined,
+    });
+    const messages = call.mock.calls.filter((args) => args[0] === "sendMessage");
+    expect((messages[0]?.[1] as Payload).text).toContain("вы менеджер");
+    // Ссылку пересылали, и нажать её мог не тот, кому она предназначалась.
+    expect(messages[1]?.[1]).toMatchObject({ chat_id: String(MANAGER) });
+    expect((messages[1]?.[1] as Payload).text).toContain("Приглашение принято");
+  });
+
+  it("объясняет отказ, а не молчит", async () => {
+    acceptInvite.mockResolvedValue({ ok: false, reason: "expired" });
+
+    await bot.handleUpdate(message("/start admin_SGVsbG8gd29ybGQh", STRANGER));
+
+    expect(payloadOf("sendMessage")?.text).toContain("Ссылка не действует");
+  });
+
+  /**
+   * В группе `/start` с кодом сделал бы менеджером того, кто первым нажал на
+   * глазах у всех: приглашение — разговор один на один.
+   */
+  it("не принимает приглашение в группе", async () => {
+    await bot.handleUpdate(message("/start admin_SGVsbG8gd29ybGQh", STRANGER, -100500));
+
+    expect(acceptInvite).not.toHaveBeenCalled();
+    expect(payloadOf("sendMessage")?.text).toContain("Микки Шоп");
+  });
+
+  // Человек шёл по приглашению: молчаливое приветствие оставило бы его гадать,
+  // сработало оно или нет.
+  it("на испорченную ссылку отвечает отказом, а не приветствием", async () => {
+    await bot.handleUpdate(message("/start admin_вставилось-не-то", STRANGER));
+
+    expect(acceptInvite).not.toHaveBeenCalled();
+    expect(payloadOf("sendMessage")?.text).toContain("Ссылка не действует");
+  });
+
+  it("UTM-метку за приглашение не принимает", async () => {
+    await bot.handleUpdate(message("/start utm_tiktok", STRANGER));
+
+    expect(acceptInvite).not.toHaveBeenCalled();
+  });
+
+  it("показывает владельцу список с кнопками «убрать»", async () => {
+    await bot.handleUpdate(message("/admins"));
+    const sent = payloadOf("sendMessage") as {
+      text: string;
+      reply_markup?: { inline_keyboard: { text: string; callback_data: string }[][] };
+    };
+
+    expect(sent.text).toContain("Денис");
+    expect(sent.text).toContain("владелец");
+    // Кнопка есть только у менеджера: владельца снимать нечем.
+    expect(sent.reply_markup?.inline_keyboard).toEqual([
+      [{ text: "Убрать: Аня", callback_data: "admin:revoke:u1" }],
+    ]);
+  });
+
+  it("снимает доступ, говорит человеку и обновляет список", async () => {
+    const revokePress = {
+      update_id: 5,
+      callback_query: {
+        id: "cb2",
+        data: "admin:revoke:u1",
+        from: { id: MANAGER },
+        message: { chat: { id: MANAGER }, message_id: 7, text: "Доступ к заявкам:" },
+      },
+    };
+
+    await bot.handleUpdate(revokePress);
+
+    expect(revoke).toHaveBeenCalledWith("u1");
+    expect(payloadOf("answerCallbackQuery")).toMatchObject({ text: "Доступ снят: Аня" });
+    expect(payloadOf("sendMessage")).toMatchObject({ chat_id: "555" });
+    expect(payloadOf("editMessageText")).toMatchObject({ message_id: 7 });
+  });
+
+  it("кнопку «убрать» не отдаёт менеджеру", async () => {
+    isAdmin.mockResolvedValue(true);
+
+    await bot.handleUpdate({
+      update_id: 6,
+      callback_query: {
+        id: "cb3",
+        data: "admin:revoke:u1",
+        from: { id: STRANGER },
+        message: { chat: { id: STRANGER }, message_id: 7 },
+      },
+    });
+
+    expect(revoke).not.toHaveBeenCalled();
+    expect(payloadOf("answerCallbackQuery")).toMatchObject({ text: "Это кнопка владельца" });
+  });
+});
+
+describe("BotService — отказы, которые нельзя проглотить", () => {
+  // Иначе кнопка крутится до таймаута, и менеджер жмёт её второй раз.
+  it("отвечает на нажатие, даже если обработчик упал", async () => {
+    setStatus.mockRejectedValue(new Error("база моргнула"));
+
+    await bot.handleUpdate(press());
+
+    expect(payloadOf("answerCallbackQuery")).toMatchObject({
+      callback_query_id: "cb1",
+      text: "Не получилось — попробуйте ещё раз",
+    });
+  });
+
+  /**
+   * `offset` уезжает в Telegram только со следующим запросом, а при остановке
+   * его не будет: та же пачка приедет заново к заменяющему контейнеру и
+   * выполнится дважды.
+   */
+  it("подтверждает разобранное перед остановкой", async () => {
+    call.mockImplementation(async (method: string) =>
+      method === "getUpdates" ? [{ update_id: 41, message: {} }] : {},
+    );
+    env = { ...env, TELEGRAM_BOT_TOKEN: "123:abc" };
+
+    bot.onModuleInit();
+    await bot.onModuleDestroy();
+
+    const acks = call.mock.calls.filter(
+      (args) => args[0] === "getUpdates" && (args[1] as Payload).timeout === 0,
+    );
+    expect(acks).toHaveLength(1);
+    expect(acks[0]?.[1]).toMatchObject({ offset: 42, limit: 1 });
+  });
+});
+
+describe("parseCommand", () => {
+  it("отделяет команду от нагрузки", () => {
+    expect(parseCommand("/start admin_abc")).toEqual({ command: "start", payload: "admin_abc" });
+    expect(parseCommand("/start@MikkiBot admin_abc")).toEqual({
+      command: "start",
+      payload: "admin_abc",
+    });
+    expect(parseCommand("  /Admins  ")).toEqual({ command: "admins", payload: "" });
+  });
+
+  it("не видит команды там, где её нет", () => {
+    expect(parseCommand("привет")).toBeNull();
+    expect(parseCommand("напиши /invite другу")).toBeNull();
+    expect(parseCommand("")).toBeNull();
   });
 });

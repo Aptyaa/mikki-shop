@@ -33,10 +33,16 @@ export class TelegramApi {
     return this.token !== "";
   }
 
+  /**
+   * `signal` обрывает запрос снаружи — им останавливают long polling при
+   * выключении: ждать штатных 30 секунд, пока Telegram ответит «обновлений
+   * нет», значит задерживать остановку приложения ровно на столько же.
+   */
   async call<T>(
     method: string,
     payload: Record<string, unknown>,
     timeoutMs: number = CALL_TIMEOUT_MS,
+    signal?: AbortSignal,
   ): Promise<T | null> {
     const token = this.token;
     if (!token) return null;
@@ -49,7 +55,9 @@ export class TelegramApi {
         // Таймаут обязателен: в сети, которая дропает пакеты вместо отказа,
         // `fetch` висит до своих внутренних таймаутов и вешает вместе с собой
         // цикл опроса — бот молчит, а в логе ничего.
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: signal
+          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
+          : AbortSignal.timeout(timeoutMs),
       });
 
       // Сначала текстом: у прокси и заглушек ответ бывает не JSON, и
