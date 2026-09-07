@@ -9,6 +9,21 @@ datasource db {
   extensions = [postgis]
 }
 
+/// Кто человек для магазина.
+///
+/// Владелец один и задаётся переменной окружения: право раздавать доступ
+/// нельзя получить из самой системы, иначе первый же приглашённый смог бы
+/// разжаловать пригласившего. Всё остальное живёт в базе и меняется через
+/// бота — правка `.env` с перезапуском ради нового менеджера не годится.
+enum UserRole {
+  /// Обычный покупатель. Роль по умолчанию: её получает каждый, кто вошёл.
+  CUSTOMER
+  /// Менеджер: видит заявки и меняет статусы заказов.
+  ADMIN
+  /// Владелец: то же плюс приглашение и отзыв менеджеров.
+  OWNER
+}
+
 /// Покупатель. Заводится сам при первом входе из Mini App — регистрации в
 /// магазине нет и не будет: Telegram уже знает, кто это.
 model User {
@@ -31,8 +46,46 @@ model User {
   createdAt    DateTime @default(now())
   lastSeenAt   DateTime @default(now())
 
+  /// Роль в магазине. Меняется приглашением и отзывом через бота.
+  role UserRole @default(CUSTOMER)
+
   pets   Pet[]
   orders Order[]
+
+  invitesCreated  AdminInvite[] @relation("InviteAuthor")
+  invitesAccepted AdminInvite[] @relation("InviteGuest")
+
+  @@index([role])
+}
+
+/// Приглашение в менеджеры — одноразовая ссылка `t.me/бот?start=admin_<код>`.
+///
+/// Так это устроено потому, что по @username человека в Telegram не найти:
+/// Bot API не отдаёт id по имени, и добавить менеджера «по нику» нечем.
+/// Ссылка же решает всё сразу: приглашённый жмёт её сам, бот узнаёт его id из
+/// того же `/start`, и переписка с ним заодно открывается — иначе бот не имел
+/// бы права написать ему первым.
+model AdminInvite {
+  id String @id @default(uuid())
+
+  /// SHA-256 кода, а не сам код. Ссылку видит мессенджер, пересылки и бэкапы;
+  /// утёкшая база с живым кодом — это чужой менеджер в магазине.
+  codeHash String @unique
+
+  createdById String
+  createdBy   User   @relation("InviteAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+
+  /// Одноразовое и с сроком: ссылка, которая живёт вечно, рано или поздно
+  /// уезжает в чужую переписку.
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  usedById String?
+  usedBy   User?   @relation("InviteGuest", fields: [usedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdById])
 }
 
 /// Питомец — получатель заказа и будущий герой социальных фич.
@@ -46,9 +99,9 @@ model User {
 /// заполнить когда угодно. Требовать породу и обхваты значило бы ломать
 /// оформление ради полноты анкеты.
 model Pet {
-  id     String @id @default(uuid())
+  id     String  @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name   String
   breed  String?
   /// Размер по сетке магазина — тот же справочник, что у `ProductSize.size`.
@@ -174,10 +227,10 @@ model Order {
   /// Отдельно от `id`: uuid по телефону не продиктуешь.
   number Int    @unique @default(autoincrement())
 
-  userId String
-  user   User    @relation(fields: [userId], references: [id])
-  petId  String?
-  pet    Pet?    @relation(fields: [petId], references: [id])
+  userId  String
+  user    User    @relation(fields: [userId], references: [id])
+  petId   String?
+  pet     Pet?    @relation(fields: [petId], references: [id])
   /// Кличка на момент заказа — слепок, как `OrderItem.title` и `.price`.
   ///
   /// Раньше кличка читалась через связь, и профиль питомца это ломал бы:

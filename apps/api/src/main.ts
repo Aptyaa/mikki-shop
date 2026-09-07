@@ -13,6 +13,10 @@ async function bootstrap() {
     .map((value) => value.trim())
     .filter(Boolean);
   app.enableCors({ origin: origin?.length ? origin : true });
+  // Без этого Nest не зовёт `onModuleDestroy` по SIGTERM, и цикл опроса
+  // Telegram остаётся включённым до убийства процесса — контейнер при
+  // перезапуске какое-то время разбирал бы обновления вдвоём со своей заменой.
+  app.enableShutdownHooks();
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 }

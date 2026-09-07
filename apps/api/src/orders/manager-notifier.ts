@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import type { DeliveryMethod, Order } from "@mikki-shop/shared-types";
+import { AdminsService } from "../admins/admins.service";
+import { TelegramApi } from "../bot/telegram-api";
+import { STATUS_LABEL, statusKeyboard } from "./order-status";
 
 const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
   courier: "Курьер",
@@ -18,41 +20,45 @@ const money = (value: number): string =>
  * Отправка не входит в транзакцию заказа и не может её сорвать: заказ уже
  * записан, и молчащий бот — повод посмотреть в лог, а не потерять покупателя.
  *
- * Без `MANAGER_CHAT_ID` (или без токена бота) уведомление пишется в лог.
- * Так это работает и сейчас: у проекта ещё нет ни бота, ни адреса, а Bot API
- * из среды разработки недоступен — см. `docs/features/008-telegram-auth.md`.
+ * Под заявкой висят кнопки статусов — это и есть вся админка заказов на
+ * сегодня: менеджер работает с телефона, из того же чата, куда пришла заявка,
+ * и отдельного экрана ради четырёх кнопок заводить незачем.
+ *
+ * Заявка уходит всем, у кого есть доступ: в чат заявок, владельцу и каждому
+ * приглашённому менеджеру. Кнопки нажимает тот, кто взял заказ, — его копия
+ * переписывается сразу, а чужие догоняют при первом же нажатии (текст
+ * сравнивается с тем, что в чате, и отставшая копия обновляется).
+ *
+ * Некому отправить (нет ни бота, ни доступов) — уведомление пишется в лог, а
+ * заказы при этом оформляются.
  */
 @Injectable()
 export class ManagerNotifier {
   private readonly log = new Logger(ManagerNotifier.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly admins: AdminsService,
+    private readonly telegram: TelegramApi,
+  ) {}
 
   async notify(order: Order): Promise<void> {
     const text = format(order);
-    const token = this.config.get<string>("TELEGRAM_BOT_TOKEN");
-    const chatId = this.config.get<string>("MANAGER_CHAT_ID");
+    const chatIds = this.telegram.enabled ? await this.admins.notifyChatIds() : [];
 
-    if (!token || !chatId) {
-      this.log.log(`Новая заявка (некому отправить, MANAGER_CHAT_ID не задан):\n${text}`);
+    if (chatIds.length === 0) {
+      this.log.log(`Новая заявка (некому отправить, доступы не заданы):\n${text}`);
       return;
     }
 
-    try {
-      const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text }),
-      });
-      if (!response.ok) {
-        // Тело ответа Telegram объясняет отказ («chat not found», «bot was
-        // blocked») — без него разбираться не в чем.
-        this.log.error(
-          `Заявка ${order.number} не ушла менеджеру: HTTP ${response.status} ${await response.text()}`,
-        );
-      }
-    } catch (error) {
-      this.log.error(`Заявка ${order.number} не ушла менеджеру: ${String(error)}`);
+    const reply_markup = statusKeyboard(order.number, order.status);
+    // Последовательно, а не `Promise.all`: заявок в минуту единицы, зато
+    // Telegram не отдаёт 429 за пачку одновременных отправок.
+    for (const chatId of chatIds) {
+      const sent = await this.telegram.call("sendMessage", { chat_id: chatId, text, reply_markup });
+      // Причину уже назвал `TelegramApi`; здесь важно, какая заявка и кому не
+      // дошла: по номеру её достают из базы руками, а по чату — понимают, что
+      // человек, например, не начинал переписку с ботом.
+      if (!sent) this.log.error(`Заявка ${order.number} не ушла в чат ${chatId}`);
     }
   }
 }
@@ -63,6 +69,10 @@ export class ManagerNotifier {
  * Простым текстом, без разметки: в Markdown любая кличка со звёздочкой или
  * подчёркиванием ломает сообщение, а экранировать её ради жирного шрифта не
  * стоит того.
+ *
+ * Тем же текстом сообщение переписывается при смене статуса, поэтому статус —
+ * его последняя строка: менеджер видит в чате не «была заявка», а «что с
+ * заказом сейчас».
  */
 export function format(order: Order): string {
   const lines = order.lines.map(
@@ -82,5 +92,6 @@ export function format(order: Order): string {
     ...lines,
     "",
     `Итого: ${money(order.total)}`,
+    `Статус: ${STATUS_LABEL[order.status]}`,
   ].join("\n");
 }
